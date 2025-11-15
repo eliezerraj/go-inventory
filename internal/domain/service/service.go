@@ -25,10 +25,10 @@ type WorkerService struct {
 func NewWorkerService(	workerRepository *database.WorkerRepository, 
 						appLogger *zerolog.Logger) *WorkerService{
 	logger := appLogger.With().
-						Str("component", "domain.service").
+						Str("package", "domain.service").
 						Logger()
-	logger.Debug().
-			Str("func","NewDatabasePGServer").Send()
+	logger.Info().
+			Str("func","NewWorkerService").Send()
 
 	return &WorkerService{
 		workerRepository: workerRepository,
@@ -36,6 +36,27 @@ func NewWorkerService(	workerRepository *database.WorkerRepository,
 	}
 }
 
+// About check health service
+func (s * WorkerService) HealthCheck(ctx context.Context) error{
+	s.logger.Info().
+			Str("func","HealthCheck").Send()
+
+	// Check database health
+	err := s.workerRepository.DatabasePG.Ping()
+	if err != nil {
+		s.logger.Error().
+				Err(err).Msg("*** Database HEALTH FAILED ***")
+		return erro.ErrHealthCheck
+	}
+
+	s.logger.Info().
+			Str("func","HealthCheck").
+			Msg("*** Database HEALTH SUCCESSFULL ***")
+
+	return nil
+}
+
+// About database stats
 func (s *WorkerService) Stat(ctx context.Context) (go_core_db_pg.PoolStats){
 	s.logger.Info().
 			Str("func","Stat").Send()
@@ -118,26 +139,6 @@ func (s * WorkerService) GetProduct(ctx context.Context, product *model.Product)
 	}
 
 	return res, nil
-}
-
-// About check health service
-func (s * WorkerService) HealthCheck(ctx context.Context) error{
-	s.logger.Info().
-			Str("func","HealthCheck").Send()
-
-	// Check database health
-	err := s.workerRepository.DatabasePG.Ping()
-	if err != nil {
-		s.logger.Error().
-				Err(err).Msg("*** Database HEALTH FAILED ***")
-		return erro.ErrHealthCheck
-	}
-
-	s.logger.Info().
-			Str("func","HealthCheck").
-			Msg("*** Database HEALTH SUCCESSFULL ***")
-
-	return nil
 }
 
 // About get a product

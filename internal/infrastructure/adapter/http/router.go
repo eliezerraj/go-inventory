@@ -43,7 +43,7 @@ func NewHttpRouters(appServer *model.AppServer,
 					workerService *service.WorkerService,
 					appLogger *zerolog.Logger) HttpRouters {
 	logger := appLogger.With().
-						Str("component", "adapter.http").
+						Str("package", "adapter.http").
 						Logger()
 
 	logger.Info().

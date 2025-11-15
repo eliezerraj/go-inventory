@@ -26,7 +26,7 @@ type WorkerRepository struct {
 func NewWorkerRepository(databasePG *go_core_db_pg.DatabasePGServer,
 						appLogger *zerolog.Logger) *WorkerRepository{
 	logger := appLogger.With().
-						Str("component", "repo.database").
+						Str("package", "repo.database").
 						Logger()
 	logger.Info().
 			Str("func","NewWorkerRepository").Send()

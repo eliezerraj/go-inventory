@@ -34,7 +34,7 @@ type HttpAppServer struct {
 func NewHttpAppServer(	appServer *model.AppServer,
 						appLogger *zerolog.Logger) HttpAppServer {
 	logger := appLogger.With().
-						Str("component", "infrastructure.server").
+						Str("package", "infrastructure.server").
 						Logger()
 	
 	logger.Info().
