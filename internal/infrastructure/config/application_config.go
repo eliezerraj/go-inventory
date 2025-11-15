@@ -14,7 +14,7 @@ import(
 var	logger = zerolog.New(os.Stdout).
 					With().
 					Str("component","go-inventory").
-					Str("package","internal.infrastructure.config").
+					Str("package","infrastructure.config").
 					Timestamp().
 					Logger()
 

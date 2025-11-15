@@ -138,10 +138,6 @@ func (h *HttpRouters) Info(rw http.ResponseWriter, req *http.Request) {
 
 // About add product
 func (h *HttpRouters) AddProduct(rw http.ResponseWriter, req *http.Request) error {
-	h.logger.Info().
-			Str("func","AddProduct").
-			Interface("trace-request-id", req.Context().Value("trace-request-id")).Send()
-
 	// extract context	
 	ctx, cancel := context.WithTimeout(req.Context(), time.Duration(h.appServer.Server.CtxTimeout) * time.Second)
     defer cancel()
@@ -150,17 +146,23 @@ func (h *HttpRouters) AddProduct(rw http.ResponseWriter, req *http.Request) erro
 	ctx, span := tracerProvider.SpanCtx(ctx, "adapter.http.AddProduct")
 	defer span.End()
 	
-	trace_id := fmt.Sprintf("%v",ctx.Value("trace-request-id"))
+	// log with context
+	h.logger.Info().
+			Ctx(ctx).
+			Str("func","AddProduct").Send()
 
 	product := model.Product{}
+	
 	err := json.NewDecoder(req.Body).Decode(&product)
     if err != nil {
+		trace_id := fmt.Sprintf("%v",ctx.Value("trace-request-id"))
 		return h.ErrorHandler(trace_id, erro.ErrBadRequest)
     }
 	defer req.Body.Close()
 
 	res, err := h.workerService.AddProduct(ctx, &product)
 	if err != nil {
+		trace_id := fmt.Sprintf("%v",ctx.Value("trace-request-id"))
 		return h.ErrorHandler(trace_id, err)
 	}
 	

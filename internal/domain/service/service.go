@@ -46,12 +46,13 @@ func (s *WorkerService) Stat(ctx context.Context) (go_core_db_pg.PoolStats){
 // About create a product
 func (s *WorkerService) AddProduct(ctx context.Context, 
 									product *model.Product) (*model.Inventory, error){
-	s.logger.Info().
-			Str("func","AddProduct").Send()
-
 	// trace
 	ctx, span := tracerProvider.SpanCtx(ctx, "service.AddProduct")
 	defer span.End()
+
+	s.logger.Info().
+			Ctx(ctx).
+			Str("func","AddProduct").Send()
 
 	// prepare database
 	tx, conn, err := s.workerRepository.DatabasePG.StartTx(ctx)

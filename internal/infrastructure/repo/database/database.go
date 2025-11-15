@@ -221,9 +221,9 @@ func (w* WorkerRepository) AddInventory(ctx context.Context,
 
 	// Query Execute
 	query := `INSERT INTO inventory ( 	fk_product_id,
-										available_quantity,
-										reserved_quantity,
-										total_quantity,
+										available,
+										reserved,
+										total,
 										created_at) 
 				VALUES($1, $2, $3, $4, $5) RETURNING id`
 
@@ -283,9 +283,9 @@ func (w *WorkerRepository) GetInventory(ctx context.Context,
 					 p.created_at, 
 					 p.updated_at,
 					 i.id,
-					 i.available_quantity,
-					 i.reserved_quantity,
-					 i.total_quantity,
+					 i.available,
+					 i.reserved,
+					 i.total,
 					 i.created_at,
 					 i.updated_at
 				FROM product as p,

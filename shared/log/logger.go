@@ -13,7 +13,7 @@ func (h TraceHook) Run(e *zerolog.Event, level zerolog.Level, msg string) {
 
 	traceRequestId := fmt.Sprintf("%v",ctx.Value("trace-request-id"))
 	
-	if traceRequestId != "" {
+	if traceRequestId != "<nil>"{
 		e = e.Str("trace-request-id", traceRequestId)
 	}
 

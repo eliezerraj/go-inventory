@@ -74,7 +74,7 @@ func (h *HttpAppServer) StartHttpAppServer(	ctx context.Context,
 	info.Use(otelmux.Middleware(h.appServer.Application.Name))
 
 	add := appRouter.Methods(http.MethodPost, http.MethodOptions).Subrouter()
-	add.HandleFunc("/add", go_core_middleware.MiddleWareErrorHandler(appHttpRouters.AddProduct))		
+	add.HandleFunc("/product", go_core_middleware.MiddleWareErrorHandler(appHttpRouters.AddProduct))		
 	add.Use(otelmux.Middleware(h.appServer.Application.Name))
 
 	get := appRouter.Methods(http.MethodGet, http.MethodOptions).Subrouter()
