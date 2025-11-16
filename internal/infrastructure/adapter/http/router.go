@@ -187,9 +187,8 @@ func (h *HttpRouters) GetProduct(rw http.ResponseWriter, req *http.Request) erro
 	vars := mux.Vars(req)
 	varID := vars["id"]
 
-	product := model.Product{}
-	product.Sku = varID
-
+	product := model.Product{Sku: varID}
+	
 	res, err := h.workerService.GetProduct(ctx, &product)
 	if err != nil {
 		trace_id := fmt.Sprintf("%v",ctx.Value("trace-request-id"))
