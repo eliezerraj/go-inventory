@@ -86,14 +86,16 @@ func (w* WorkerRepository) AddProduct(ctx context.Context,
 	query := `INSERT INTO product ( sku, 
 									type,
 									name,
+									status,
 									created_at) 
-				VALUES($1, $2, $3, $4) RETURNING id`
+				VALUES($1, $2, $3, $4, $5) RETURNING id`
 
 	row := tx.QueryRow(	ctx, 
 						query,
 						product.Sku,
 						product.Type, 
 						product.Name,
+						product.Status,
 						product.CreatedAt)
 						
 	if err := row.Scan(&id); err != nil {
@@ -138,7 +140,8 @@ func (w *WorkerRepository) GetProduct(ctx context.Context,
 	query := `SELECT id, 
 					sku, 
 					type,
-					name, 
+					name,
+					status,
 					created_at, 
 					updated_at
 				FROM product 
@@ -167,6 +170,7 @@ func (w *WorkerRepository) GetProduct(ctx context.Context,
 							&res_product.Sku, 
 							&res_product.Type,
 							&res_product.Name,
+							&res_product.Status,
 							&res_product.CreatedAt,
 							&nullUpdatedAt,
 						)
@@ -279,7 +283,8 @@ func (w *WorkerRepository) GetInventory(ctx context.Context,
 	query := `SELECT p.id, 
 					 p.sku, 
 					 p.type,
-					 p.name, 
+					 p.name,
+					 p.status,
 					 p.created_at, 
 					 p.updated_at,
 					 i.id,
@@ -316,6 +321,7 @@ func (w *WorkerRepository) GetInventory(ctx context.Context,
 							&res_product.Sku, 
 							&res_product.Type,
 							&res_product.Name,
+							&res_product.Status,
 							&res_product.CreatedAt,
 							&nullProductUpdatedAt,
 							&res_inventory.ID, 

@@ -141,7 +141,7 @@ func (s * WorkerService) GetProduct(ctx context.Context, product *model.Product)
 	return res, nil
 }
 
-// About get a product
+// About get inventory
 func (s * WorkerService) GetInventory(ctx context.Context, inventory *model.Inventory) (*model.Inventory, error){
 	// Trace
 	ctx, span := tracerProvider.SpanCtx(ctx, "service.GetInventory")
