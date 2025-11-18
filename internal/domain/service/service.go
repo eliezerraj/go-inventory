@@ -69,7 +69,6 @@ func (s *WorkerService) AddProduct(ctx context.Context,
 									product *model.Product) (*model.Inventory, error){
 	// trace
 	ctx, span := tracerProvider.SpanCtx(ctx, "service.AddProduct")
-	defer span.End()
 
 	s.logger.Info().
 			Ctx(ctx).
@@ -80,7 +79,6 @@ func (s *WorkerService) AddProduct(ctx context.Context,
 	if err != nil {
 		return nil, err
 	}
-	defer s.workerRepository.DatabasePG.ReleaseTx(conn)
 
 	// handle connection
 	defer func() {
@@ -89,11 +87,13 @@ func (s *WorkerService) AddProduct(ctx context.Context,
 		} else {
 			tx.Commit(ctx)
 		}
+		s.workerRepository.DatabasePG.ReleaseTx(conn)
 		span.End()
 	}()
 
 	// prepare data
-	product.CreatedAt = time.Now()
+	now := time.Now()
+	product.CreatedAt = now
 
 	// Create product
 	res_product, err := s.workerRepository.AddProduct(ctx, tx, product)
@@ -104,13 +104,13 @@ func (s *WorkerService) AddProduct(ctx context.Context,
 	// Setting PK
 	product.ID = res_product.ID
 
-	// Prepate inventory
+	// Create a default inventory
 	inventory := model.Inventory{
-		Product: 		*res_product,
-		QtdAvailable:	1000,
-		QtdReserved:	0,
-		QtdTotal:		1000, 	
-		CreatedAt:		time.Now(),
+		Product: 	*res_product,
+		Available:	1000,
+		Reserved:	0,
+		Sold:		0, 	
+		CreatedAt:	now,
 	}
 	//Create inventory
 	res_inventory, err := s.workerRepository.AddInventory(ctx, tx, &inventory)
@@ -164,8 +164,7 @@ func (s * WorkerService) GetInventory(ctx context.Context, inventory *model.Inve
 func (s * WorkerService) UpdateInventory(ctx context.Context, inventory *model.Inventory) (*model.Inventory, error){
 	// Trace
 	ctx, span := tracerProvider.SpanCtx(ctx, "service.UpdateInventory")
-	defer span.End()
-	
+
 	s.logger.Info().
 			Ctx(ctx).
 			Str("func","UpdateInventory").Send()
@@ -175,7 +174,6 @@ func (s * WorkerService) UpdateInventory(ctx context.Context, inventory *model.I
 	if err != nil {
 		return nil, err
 	}
-	defer s.workerRepository.DatabasePG.ReleaseTx(conn)
 
 	// handle connection
 	defer func() {
@@ -184,21 +182,36 @@ func (s * WorkerService) UpdateInventory(ctx context.Context, inventory *model.I
 		} else {
 			tx.Commit(ctx)
 		}
+		s.workerRepository.DatabasePG.ReleaseTx(conn)
 		span.End()
 	}()
+
+	// Get product info
+	// Call a service
+	resInventory, err := s.workerRepository.GetInventory(ctx, inventory)
+	if err != nil {
+		return nil, err
+	}
+
+	// set data for update
+	now := time.Now()
+	inventory.UpdatedAt = &now
+	inventory.ID = resInventory.ID
+	inventory.Product = resInventory.Product
 
 	// Call a service
 	row, err := s.workerRepository.UpdateInventory(ctx, tx, inventory)
 	if err != nil {
 		return nil, err
 	}
+	
 	// whenever zero rows was update, for the skip lock clausule, a new rows must be inserted
 	if row == 0 {
-		_, err := s.workerRepository.AddInventory(ctx, tx, inventory)
+		_, err := s.workerRepository.AddInventory(ctx, tx, resInventory)
 		if err != nil {
 			return nil, err
 		}
 
 	}
-	return inventory, nil
+	return resInventory, nil
 }

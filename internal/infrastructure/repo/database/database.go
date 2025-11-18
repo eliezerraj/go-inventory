@@ -221,22 +221,21 @@ func (w* WorkerRepository) AddInventory(ctx context.Context,
 
 	//Prepare
 	var id int
-	//inventory.CreatedAt = time.Now()
 
 	// Query Execute
 	query := `INSERT INTO inventory ( 	fk_product_id,
 										available,
 										reserved,
-										total,
+										sold,
 										created_at) 
 				VALUES($1, $2, $3, $4, $5) RETURNING id`
 
 	row := tx.QueryRow(	ctx, 
 						query,
 						inventory.Product.ID,
-						inventory.QtdAvailable, 
-						inventory.QtdReserved,
-						inventory.QtdTotal,
+						inventory.Available, 
+						inventory.Reserved,
+						inventory.Sold,
 						inventory.CreatedAt)
 						
 	if err := row.Scan(&id); err != nil {
@@ -290,7 +289,7 @@ func (w *WorkerRepository) GetInventory(ctx context.Context,
 					 i.id,
 					 i.available,
 					 i.reserved,
-					 i.total,
+					 i.sold,
 					 i.created_at,
 					 i.updated_at
 				FROM product as p,
@@ -325,9 +324,9 @@ func (w *WorkerRepository) GetInventory(ctx context.Context,
 							&res_product.CreatedAt,
 							&nullProductUpdatedAt,
 							&res_inventory.ID, 
-							&res_inventory.QtdAvailable, 
-							&res_inventory.QtdReserved, 
-							&res_inventory.QtdTotal,
+							&res_inventory.Available, 
+							&res_inventory.Reserved, 
+							&res_inventory.Sold,
 							&res_inventory.CreatedAt,
 							&nullInventoryUpdatedAt,
 						)
@@ -361,8 +360,8 @@ func (w *WorkerRepository) GetInventory(ctx context.Context,
 
 // About update a Inventory
 func (w* WorkerRepository) UpdateInventory(ctx context.Context, 
-										tx pgx.Tx, 
-										inventory *model.Inventory) (int64, error){
+											tx pgx.Tx, 
+											inventory *model.Inventory) (int64, error){
 
 	w.logger.Info().
 			Ctx(ctx).
@@ -383,11 +382,12 @@ func (w* WorkerRepository) UpdateInventory(ctx context.Context,
 
 	// Query Execute
 	query := `UPDATE inventory
-				SET available = available + $2,
-					reserved = reserved + reserved + $3
-					updated_at = $4
+				SET available = available + $3,
+					reserved = reserved + $4,
+					sold = sold + $5,
+					updated_at = $2
 				WHERE id = (SELECT id 
-								FROM inventory
+							FROM inventory
 							WHERE fk_product_id = $1
 							ORDER BY id
 							FOR UPDATE SKIP LOCKED 
@@ -395,10 +395,12 @@ func (w* WorkerRepository) UpdateInventory(ctx context.Context,
 
 	row, err := tx.Exec(ctx, 
 						query,	
-						inventory.Product.ID,			
-						inventory.QtdAvailable,
-						inventory.QtdReserved,
-						inventory.UpdatedAt)
+						inventory.Product.ID,
+						inventory.UpdatedAt,		
+						inventory.Available,
+						inventory.Reserved,
+						inventory.Sold,
+					)
 	if err != nil {
 		w.logger.Error().
 				Ctx(ctx).

@@ -51,11 +51,11 @@ type Product struct {
 }
 
 type Inventory struct {
-	ID				int	`json:"id,omitempty"`
+	ID				int		`json:"id,omitempty"`
 	Product 		Product	 `json:"product"`
-	QtdAvailable	int	`json:"qtd_available,omitempty"`
-	QtdReserved		int	`json:"qtd_reserved,omitempty"`
-	QtdTotal		int	`json:"qtd_total,omitempty"` 	
+	Available		int		`json:"available,omitempty"`
+	Reserved		int		`json:"reserved,omitempty"`
+	Sold			int		`json:"sold,omitempty"` 	
 	CreatedAt		time.Time 	`json:"created_at,omitempty"`
 	UpdatedAt		*time.Time 	`json:"update_at,omitempty"`	
 }

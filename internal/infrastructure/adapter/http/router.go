@@ -128,11 +128,10 @@ func (h *HttpRouters) Info(rw http.ResponseWriter, req *http.Request) {
 										time.Duration(h.appServer.Server.CtxTimeout) * time.Second)
     defer cancel()
 
-	// trace	
+	// trace and log	
 	ctx, span := tracerProvider.SpanCtx(ctx, "adapter.http.Info")
 	defer span.End()
 
-	// log with context
 	h.logger.Info().
 			Ctx(ctx).
 			Str("func","Info").Send()
@@ -146,15 +145,15 @@ func (h *HttpRouters) AddProduct(rw http.ResponseWriter, req *http.Request) erro
 	ctx, cancel := context.WithTimeout(req.Context(), time.Duration(h.appServer.Server.CtxTimeout) * time.Second)
     defer cancel()
 
-	// trace	
+	// trace and log	
 	ctx, span := tracerProvider.SpanCtx(ctx, "adapter.http.AddProduct")
 	defer span.End()
 	
-	// log with context
 	h.logger.Info().
 			Ctx(ctx).
 			Str("func","AddProduct").Send()
 
+	// decode payload		
 	product := model.Product{}
 	
 	err := json.NewDecoder(req.Body).Decode(&product)
@@ -164,6 +163,7 @@ func (h *HttpRouters) AddProduct(rw http.ResponseWriter, req *http.Request) erro
     }
 	defer req.Body.Close()
 
+	// call service
 	res, err := h.workerService.AddProduct(ctx, &product)
 	if err != nil {
 		trace_id := fmt.Sprintf("%v",ctx.Value("trace-request-id"))
@@ -179,20 +179,21 @@ func (h *HttpRouters) GetProduct(rw http.ResponseWriter, req *http.Request) erro
 	ctx, cancel := context.WithTimeout(req.Context(), time.Duration(h.appServer.Server.CtxTimeout) * time.Second)
     defer cancel()
 
-	// trace	
+	// trace and log	
 	ctx, span := tracerProvider.SpanCtx(ctx, "adapter.http.GetProduct")
 	defer span.End()
 
-	// log with context
 	h.logger.Info().
 			Ctx(ctx).
 			Str("func","GetProduct").Send()
 
+	// decode payload				
 	vars := mux.Vars(req)
 	varID := vars["id"]
 
 	product := model.Product{Sku: varID}
 	
+	// call service	
 	res, err := h.workerService.GetProduct(ctx, &product)
 	if err != nil {
 		trace_id := fmt.Sprintf("%v",ctx.Value("trace-request-id"))
@@ -208,22 +209,21 @@ func (h *HttpRouters) GetInventory(rw http.ResponseWriter, req *http.Request) er
 	ctx, cancel := context.WithTimeout(req.Context(), time.Duration(h.appServer.Server.CtxTimeout) * time.Second)
     defer cancel()
 
-	// trace	
+	// trace and log	
 	ctx, span := tracerProvider.SpanCtx(ctx, "adapter.http.GetInventory")
 	defer span.End()
 
-	// log with context
 	h.logger.Info().
 			Ctx(ctx).
 			Str("func","GetInventory").Send()
 
+	// decode payload	
 	vars := mux.Vars(req)
 	varID := vars["id"]
 
-	inventory := model.Inventory{ 
-									Product: model.Product{Sku: varID} ,
-								}
+	inventory := model.Inventory{Product: model.Product{Sku: varID},}
 
+	// call service	
 	res, err := h.workerService.GetInventory(ctx, &inventory)
 	if err != nil {
 		trace_id := fmt.Sprintf("%v",ctx.Value("trace-request-id"))
@@ -239,18 +239,17 @@ func (h *HttpRouters) UpdateInventory(rw http.ResponseWriter, req *http.Request)
 	ctx, cancel := context.WithTimeout(req.Context(), time.Duration(h.appServer.Server.CtxTimeout) * time.Second)
     defer cancel()
 
-	// trace	
+	// trace and log	
 	ctx, span := tracerProvider.SpanCtx(ctx, "adapter.http.UpdateInventory")
 	defer span.End()
 
-	// log with context
 	h.logger.Info().
 			Ctx(ctx).
 			Str("func","UpdateInventory").Send()
 
-	// get data payload
-	product := model.Product{}
-	err := json.NewDecoder(req.Body).Decode(&product)
+	// decode payload	
+	inventory := model.Inventory{}
+	err := json.NewDecoder(req.Body).Decode(&inventory)
     if err != nil {
 		trace_id := fmt.Sprintf("%v",ctx.Value("trace-request-id"))
 		return h.ErrorHandler(trace_id, erro.ErrBadRequest)
@@ -261,9 +260,9 @@ func (h *HttpRouters) UpdateInventory(rw http.ResponseWriter, req *http.Request)
 	vars := mux.Vars(req)
 	varSku := vars["id"]
 
-	product.Sku = varSku
-	inventory := model.Inventory{ Product: product }
+	inventory.Product.Sku = varSku
 
+	// call service	
 	res, err := h.workerService.UpdateInventory(ctx, &inventory)
 	if err != nil {
 		trace_id := fmt.Sprintf("%v",ctx.Value("trace-request-id"))
