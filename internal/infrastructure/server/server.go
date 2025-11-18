@@ -85,6 +85,10 @@ func (h *HttpAppServer) StartHttpAppServer(	ctx context.Context,
 	getInv.HandleFunc("/inventory/product/{id}",go_core_middleware.MiddleWareErrorHandler(appHttpRouters.GetInventory))		
 	getInv.Use(otelmux.Middleware(h.appServer.Application.Name))
 
+	put := appRouter.Methods(http.MethodPut, http.MethodOptions).Subrouter()
+	put.HandleFunc("/product/inventory/{id}",go_core_middleware.MiddleWareErrorHandler(appHttpRouters.UpdateInventory))		
+	put.Use(otelmux.Middleware(h.appServer.Application.Name))
+		
 	// -------   Server Http 
 
 	srv := http.Server{

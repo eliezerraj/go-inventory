@@ -358,3 +358,54 @@ func (w *WorkerRepository) GetInventory(ctx context.Context,
 
 	return nil, erro.ErrNotFound
 }
+
+// About update a Inventory
+func (w* WorkerRepository) UpdateInventory(ctx context.Context, 
+										tx pgx.Tx, 
+										inventory *model.Inventory) (int64, error){
+
+	w.logger.Info().
+			Ctx(ctx).
+			Str("func","UpdateInventory").Send()
+
+	// trace
+	ctx, span := tracerProvider.SpanCtx(ctx, "database.UpdateInventory")
+	defer span.End()
+
+	conn, err := w.DatabasePG.Acquire(ctx)
+	if err != nil {
+		w.logger.Error().
+				Ctx(ctx).
+				Err(err).Send()
+		return 0, errors.New(err.Error())
+	}
+	defer w.DatabasePG.Release(conn)
+
+	// Query Execute
+	query := `UPDATE inventory
+				SET available = available + $2,
+					reserved = reserved + reserved + $3
+					updated_at = $4
+				WHERE id = (SELECT id 
+								FROM inventory
+							WHERE fk_product_id = $1
+							ORDER BY id
+							FOR UPDATE SKIP LOCKED 
+							LIMIT 1)`
+
+	row, err := tx.Exec(ctx, 
+						query,	
+						inventory.Product.ID,			
+						inventory.QtdAvailable,
+						inventory.QtdReserved,
+						inventory.UpdatedAt)
+	if err != nil {
+		w.logger.Error().
+				Ctx(ctx).
+				Str("func","UpdateInventory").
+				Err(err).Send()
+		return 0, errors.New(err.Error())
+	}
+
+	return row.RowsAffected(), nil
+}

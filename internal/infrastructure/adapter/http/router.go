@@ -232,3 +232,43 @@ func (h *HttpRouters) GetInventory(rw http.ResponseWriter, req *http.Request) er
 	
 	return coreJson.WriteJSON(rw, http.StatusOK, res)
 }
+
+// About update inventory
+func (h *HttpRouters) UpdateInventory(rw http.ResponseWriter, req *http.Request) error {
+	// extract context		
+	ctx, cancel := context.WithTimeout(req.Context(), time.Duration(h.appServer.Server.CtxTimeout) * time.Second)
+    defer cancel()
+
+	// trace	
+	ctx, span := tracerProvider.SpanCtx(ctx, "adapter.http.UpdateInventory")
+	defer span.End()
+
+	// log with context
+	h.logger.Info().
+			Ctx(ctx).
+			Str("func","UpdateInventory").Send()
+
+	// get data payload
+	product := model.Product{}
+	err := json.NewDecoder(req.Body).Decode(&product)
+    if err != nil {
+		trace_id := fmt.Sprintf("%v",ctx.Value("trace-request-id"))
+		return h.ErrorHandler(trace_id, erro.ErrBadRequest)
+    }
+	defer req.Body.Close()
+
+	// get put parameter		
+	vars := mux.Vars(req)
+	varSku := vars["id"]
+
+	product.Sku = varSku
+	inventory := model.Inventory{ Product: product }
+
+	res, err := h.workerService.UpdateInventory(ctx, &inventory)
+	if err != nil {
+		trace_id := fmt.Sprintf("%v",ctx.Value("trace-request-id"))
+		return h.ErrorHandler(trace_id, err)
+	}
+	
+	return coreJson.WriteJSON(rw, http.StatusOK, res)
+}

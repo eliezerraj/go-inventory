@@ -159,3 +159,46 @@ func (s * WorkerService) GetInventory(ctx context.Context, inventory *model.Inve
 
 	return res, nil
 }
+
+// About get inventory
+func (s * WorkerService) UpdateInventory(ctx context.Context, inventory *model.Inventory) (*model.Inventory, error){
+	// Trace
+	ctx, span := tracerProvider.SpanCtx(ctx, "service.UpdateInventory")
+	defer span.End()
+	
+	s.logger.Info().
+			Ctx(ctx).
+			Str("func","UpdateInventory").Send()
+
+	// prepare database
+	tx, conn, err := s.workerRepository.DatabasePG.StartTx(ctx)
+	if err != nil {
+		return nil, err
+	}
+	defer s.workerRepository.DatabasePG.ReleaseTx(conn)
+
+	// handle connection
+	defer func() {
+		if err != nil {
+			tx.Rollback(ctx)
+		} else {
+			tx.Commit(ctx)
+		}
+		span.End()
+	}()
+
+	// Call a service
+	row, err := s.workerRepository.UpdateInventory(ctx, tx, inventory)
+	if err != nil {
+		return nil, err
+	}
+	// whenever zero rows was update, for the skip lock clausule, a new rows must be inserted
+	if row == 0 {
+		_, err := s.workerRepository.AddInventory(ctx, tx, inventory)
+		if err != nil {
+			return nil, err
+		}
+
+	}
+	return inventory, nil
+}
