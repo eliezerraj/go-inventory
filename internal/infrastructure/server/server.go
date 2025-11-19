@@ -12,17 +12,13 @@ import(
 	"github.com/rs/zerolog"
 	"github.com/gorilla/mux"
 
-	go_core_midleware "github.com/eliezerraj/go-core/middleware"
+	go_core_midleware "github.com/eliezerraj/go-core/v2/middleware"
 
 	"github.com/go-inventory/internal/domain/model"
 	app_http_routers "github.com/go-inventory/internal/infrastructure/adapter/http"
 
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"go.opentelemetry.io/contrib/instrumentation/github.com/gorilla/mux/otelmux"
-)
-
-var(
-	go_core_middleware go_core_midleware.ToolsMiddleware
 )
 
 type HttpAppServer struct {
@@ -53,7 +49,9 @@ func (h *HttpAppServer) StartHttpAppServer(	ctx context.Context,
 			Str("func","StartHttpAppServer").Send()
 
 	appRouter := mux.NewRouter().StrictSlash(true)
-	appRouter.Use(go_core_middleware.MiddleWareHandlerHeader)
+	// create a middleware component
+	appMiddleWare := go_core_midleware.NewMiddleWare(h.logger)	
+	appRouter.Use(appMiddleWare.MiddleWareHandlerHeader)
 
 	appRouter.Handle("/metrics", promhttp.Handler())
 
@@ -74,19 +72,19 @@ func (h *HttpAppServer) StartHttpAppServer(	ctx context.Context,
 	info.Use(otelmux.Middleware(h.appServer.Application.Name))
 
 	add := appRouter.Methods(http.MethodPost, http.MethodOptions).Subrouter()
-	add.HandleFunc("/product", go_core_middleware.MiddleWareErrorHandler(appHttpRouters.AddProduct))		
+	add.HandleFunc("/product", appMiddleWare.MiddleWareErrorHandler(appHttpRouters.AddProduct))		
 	add.Use(otelmux.Middleware(h.appServer.Application.Name))
 
 	get := appRouter.Methods(http.MethodGet, http.MethodOptions).Subrouter()
-	get.HandleFunc("/product/{id}",go_core_middleware.MiddleWareErrorHandler(appHttpRouters.GetProduct))		
+	get.HandleFunc("/product/{id}",appMiddleWare.MiddleWareErrorHandler(appHttpRouters.GetProduct))		
 	get.Use(otelmux.Middleware(h.appServer.Application.Name))
 
 	getInv := appRouter.Methods(http.MethodGet, http.MethodOptions).Subrouter()
-	getInv.HandleFunc("/inventory/product/{id}",go_core_middleware.MiddleWareErrorHandler(appHttpRouters.GetInventory))		
+	getInv.HandleFunc("/inventory/product/{id}",appMiddleWare.MiddleWareErrorHandler(appHttpRouters.GetInventory))		
 	getInv.Use(otelmux.Middleware(h.appServer.Application.Name))
 
 	put := appRouter.Methods(http.MethodPut, http.MethodOptions).Subrouter()
-	put.HandleFunc("/inventory/product/{id}",go_core_middleware.MiddleWareErrorHandler(appHttpRouters.UpdateInventory))		
+	put.HandleFunc("/inventory/product/{id}",appMiddleWare.MiddleWareErrorHandler(appHttpRouters.UpdateInventory))		
 	put.Use(otelmux.Middleware(h.appServer.Application.Name))
 		
 	// -------   Server Http 

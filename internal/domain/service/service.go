@@ -10,8 +10,9 @@ import (
 	"github.com/go-inventory/shared/erro"
 
 	database "github.com/go-inventory/internal/infrastructure/repo/database"
-	go_core_db_pg "github.com/eliezerraj/go-core/database/postgre"
-	go_core_otel_trace "github.com/eliezerraj/go-core/otel/trace"
+
+	go_core_db_pg "github.com/eliezerraj/go-core/v2/database/postgre"
+	go_core_otel_trace "github.com/eliezerraj/go-core/v2/otel/trace"
 )
 
 var tracerProvider go_core_otel_trace.TracerProvider
