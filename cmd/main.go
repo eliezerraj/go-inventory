@@ -26,6 +26,7 @@ import(
 	"go.opentelemetry.io/otel/propagation"
 )
 
+// Global variables
 var ( 
 	appLogger 	zerolog.Logger
 	logger		zerolog.Logger
@@ -39,8 +40,8 @@ var (
 
 // About init
 func init(){
-	// Load application info
 
+	// Load application info
 	application := config.GetApplicationInfo()
 	appServer.Application = &application
 	
@@ -98,10 +99,11 @@ func init(){
 // About main
 func main (){
 	logger.Info().
-			Str("func","main").Send()
+			Msgf("STARTING APP version: %s",appServer.Application.Version)
 	logger.Info().
 			Interface("appServer", appServer).Send()
 
+	// create context and otel log provider
 	ctx, cancel := context.WithCancel(context.Background())
 
 	var tracerProvider *sdktrace.TracerProvider
@@ -122,7 +124,7 @@ func main (){
 		tracer = tracerProvider.Tracer(appServer.Application.Name)
 	}
 
-	// Open Database
+	// Open prepare database
 	count := 1
 	var err error
 	for {
@@ -145,27 +147,7 @@ func main (){
 		break
 	}
 
-	// Cancel everything
-	defer func() {
-
-		if tracerProvider != nil {
-			err := tracerProvider.Shutdown(ctx)
-			if err != nil{
-				logger.Error().
-						Err(err).
-						Msg("Erro to shutdown tracer provider")
-			}
-		}
-		
-		appDatabasePGServer.CloseConnection()
-		cancel()
-
-		logger.Info().
-				Msgf("App %s Finalized SUCCESSFULL !!!", appServer.Application.Name)
-
-	}()
-
-	// wire
+	// Wire 
 	repository := database.NewWorkerRepository(&appDatabasePGServer,
 												&appLogger)
 	
@@ -179,7 +161,7 @@ func main (){
 	httpServer := server.NewHttpAppServer(&appServer,
 										  &appLogger,)
 
-	// Health Check
+	// Services/dependevies health check
 	err = workerService.HealthCheck(ctx)
 	if err != nil {
 		logger.Error().
@@ -189,6 +171,29 @@ func main (){
 					Msg("SERVICES HEALTH CHECK OK")
 	}
 
-	httpServer.StartHttpAppServer(	ctx, 
-									httpRouters,)
+	// Cancel everything
+	defer func() {
+		// cancel log provider
+		if tracerProvider != nil {
+			err := tracerProvider.Shutdown(ctx)
+			if err != nil{
+				logger.Error().
+						Err(err).
+						Msg("Erro to shutdown tracer provider")
+			}
+		}
+		
+		// cancel database
+		appDatabasePGServer.CloseConnection()
+		
+		// cancel context
+		cancel()
+
+		logger.Info().
+				Msgf("App %s Finalized SUCCESSFULL !!!", appServer.Application.Name)
+	}()
+
+	// Start web server
+	httpServer.StartHttpAppServer(ctx, 
+								  httpRouters,)
 }

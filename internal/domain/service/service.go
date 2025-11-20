@@ -46,13 +46,13 @@ func (s * WorkerService) HealthCheck(ctx context.Context) error{
 	err := s.workerRepository.DatabasePG.Ping()
 	if err != nil {
 		s.logger.Error().
-				Err(err).Msg("*** Database HEALTH FAILED ***")
+				Err(err).Msg("*** Database HEALTH CHECK FAILED ***")
 		return erro.ErrHealthCheck
 	}
 
 	s.logger.Info().
 			Str("func","HealthCheck").
-			Msg("*** Database HEALTH SUCCESSFULL ***")
+			Msg("*** Database HEALTH CHECK SUCCESSFULL ***")
 
 	return nil
 }
