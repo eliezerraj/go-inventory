@@ -16,13 +16,6 @@ FROM alpine
 
 WORKDIR /app
 COPY --from=builder /app/cmd/go-inventory .
-
-WORKDIR /var/pod/secret
-
-#RUN echo -n "postgres" > /var/pod/secret/username # for testing only
-#RUN echo -n "postgres" > /var/pod/secret/password # for testing only
-#COPY --from=builder /app/cmd/.env . #for testing only
-
 COPY --from=builder /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/
 
 CMD ["/app/go-inventory"]
