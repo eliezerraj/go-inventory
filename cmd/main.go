@@ -17,15 +17,16 @@ import(
 	"github.com/go-inventory/internal/infrastructure/repo/database"
 	"github.com/go-inventory/internal/domain/service"
 
-	go_core_otel_trace "github.com/eliezerraj/go-core/otel/trace"
-	go_core_db_pg "github.com/eliezerraj/go-core/database/postgre"
+	go_core_otel_trace 	"github.com/eliezerraj/go-core/v2/otel/trace"
+	go_core_db_pg 		"github.com/eliezerraj/go-core/v2/database/postgre"
 
+	// traces
 	sdktrace "go.opentelemetry.io/otel/sdk/trace"
 	"go.opentelemetry.io/otel"
-	"go.opentelemetry.io/otel/trace"	
 	"go.opentelemetry.io/otel/propagation"
 )
 
+// Global variables
 var ( 
 	appLogger 	zerolog.Logger
 	logger		zerolog.Logger
@@ -34,13 +35,13 @@ var (
 
 	appInfoTrace 		go_core_otel_trace.InfoTrace
 	appTracerProvider 	go_core_otel_trace.TracerProvider
-	tracer				trace.Tracer
+	sdkTracerProvider 	*sdktrace.TracerProvider
 )
 
 // About init
 func init(){
-	// Load application info
 
+	// Load application info
 	application := config.GetApplicationInfo()
 	appServer.Application = &application
 	
@@ -98,13 +99,13 @@ func init(){
 // About main
 func main (){
 	logger.Info().
-			Str("func","main").Send()
+			Msgf("STARTING APP version: %s",appServer.Application.Version)
 	logger.Info().
 			Interface("appServer", appServer).Send()
 
+	// create context and otel log provider
 	ctx, cancel := context.WithCancel(context.Background())
 
-	var tracerProvider *sdktrace.TracerProvider
 	if appServer.Application.OtelTraces {
 		appInfoTrace.Name = appServer.Application.Name
 		appInfoTrace.Version = appServer.Application.Version
@@ -112,17 +113,17 @@ func main (){
 		appInfoTrace.Env = appServer.Application.Env
 		appInfoTrace.Account = appServer.Application.Account
 
-		tracerProvider = appTracerProvider.NewTracerProvider(ctx, 
-															*appServer.EnvTrace, 
-															appInfoTrace,
-															&appLogger)
+		sdkTracerProvider = appTracerProvider.NewTracerProvider(ctx, 
+																*appServer.EnvTrace, 
+																appInfoTrace,
+																&appLogger)
 
 		otel.SetTextMapPropagator(propagation.TraceContext{})
-		otel.SetTracerProvider(tracerProvider)
-		tracer = tracerProvider.Tracer(appServer.Application.Name)
+		otel.SetTracerProvider(sdkTracerProvider)
+		sdkTracerProvider.Tracer(appServer.Application.Name)
 	}
 
-	// Open Database
+	// Open prepare database
 	count := 1
 	var err error
 	for {
@@ -132,10 +133,14 @@ func main (){
 		if err != nil {
 			if count < 3 {
 				logger.Warn().
-						Err(err).Msg("error open database... trying again WARNING")
+					   Ctx(ctx).
+					   Err(err).
+					   Msg("error open database... trying again WARNING")
 			} else {
 				logger.Fatal().
-						Err(err).Msg("Fatal Error open Database ABORTING")
+					   Ctx(ctx).
+					   Err(err).
+					   Msg("Fatal Error open Database ABORTING")
 				panic(err)
 			}
 			time.Sleep(3 * time.Second) //backoff
@@ -145,27 +150,7 @@ func main (){
 		break
 	}
 
-	// Cancel everything
-	defer func() {
-
-		if tracerProvider != nil {
-			err := tracerProvider.Shutdown(ctx)
-			if err != nil{
-				logger.Error().
-						Err(err).
-						Msg("Erro to shutdown tracer provider")
-			}
-		}
-		
-		appDatabasePGServer.CloseConnection()
-		cancel()
-
-		logger.Info().
-				Msgf("App %s Finalized SUCCESSFULL !!!", appServer.Application.Name)
-
-	}()
-
-	// wire
+	// Wire 
 	repository := database.NewWorkerRepository(&appDatabasePGServer,
 												&appLogger)
 	
@@ -179,16 +164,44 @@ func main (){
 	httpServer := server.NewHttpAppServer(&appServer,
 										  &appLogger,)
 
-	// Health Check
+	// Services/dependevies health check
 	err = workerService.HealthCheck(ctx)
 	if err != nil {
 		logger.Error().
-					Err(err).Msg("Error health check support services ERROR")
+			   Ctx(ctx).
+			   Err(err).
+			   Msg("Error health check support services ERROR")
 	} else {
 		logger.Info().
-					Msg("SERVICES HEALTH CHECK OK")
+			   Ctx(ctx).
+			   Msg("SERVICES HEALTH CHECK OK")
 	}
 
-	httpServer.StartHttpAppServer(	ctx, 
-									httpRouters,)
+	// Cancel everything
+	defer func() {
+		// cancel log provider
+		if sdkTracerProvider != nil {
+			err := sdkTracerProvider.Shutdown(ctx)
+			if err != nil{
+				logger.Error().
+				       Ctx(ctx).
+					   Err(err). 
+					   Msg("Erro to shutdown tracer provider")
+			}
+		}
+		
+		// cancel database
+		appDatabasePGServer.CloseConnection()
+		
+		// cancel context
+		cancel()
+
+		logger.Info().
+			   Ctx(ctx).
+			   Msgf("App %s Finalized SUCCESSFULL !!!", appServer.Application.Name)
+	}()
+
+	// Start web server
+	httpServer.StartHttpAppServer(ctx, 
+								  httpRouters,)
 }

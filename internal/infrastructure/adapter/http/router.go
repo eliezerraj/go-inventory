@@ -15,14 +15,15 @@ import (
 	"github.com/go-inventory/shared/erro"
 	"github.com/go-inventory/internal/domain/model"
 	"github.com/go-inventory/internal/domain/service"
-
-	go_core_json "github.com/eliezerraj/go-core/coreJson"
-	go_core_otel_trace "github.com/eliezerraj/go-core/otel/trace"
+	
+	go_core_midleware "github.com/eliezerraj/go-core/v2/middleware"
+	go_core_otel_trace "github.com/eliezerraj/go-core/v2/otel/trace"
 )
 
 var (
-	coreJson 		go_core_json.CoreJson
-	coreApiError 	go_core_json.APIError
+	coreMiddleWareApiError	go_core_midleware.APIError
+	coreMiddleWareWriteJSON	go_core_midleware.MiddleWare
+
 	tracerProvider go_core_otel_trace.TracerProvider
 )
 
@@ -45,7 +46,7 @@ func NewHttpRouters(appServer *model.AppServer,
 	logger := appLogger.With().
 						Str("package", "adapter.http").
 						Logger()
-
+			
 	logger.Info().
 			Str("func","NewHttpRouters").Send()
 
@@ -57,7 +58,7 @@ func NewHttpRouters(appServer *model.AppServer,
 }
 
 // About handle error
-func (h *HttpRouters) ErrorHandler(trace_id string, err error) *go_core_json.APIError {
+func (h *HttpRouters) ErrorHandler(trace_id string, err error) *go_core_midleware.APIError {
 
 	var httpStatusCode int = http.StatusInternalServerError
 
@@ -78,24 +79,20 @@ func (h *HttpRouters) ErrorHandler(trace_id string, err error) *go_core_json.API
    		httpStatusCode = http.StatusBadRequest
 	}
 
-	coreApiError = coreApiError.NewAPIError(err, trace_id, httpStatusCode)
+	coreMiddleWareApiError = coreMiddleWareApiError.NewAPIError(err, 
+																trace_id, 
+																httpStatusCode)
 
-	return &coreApiError
+	return &coreMiddleWareApiError
 }
 
-// About return a health
+// About return a health, without log and trace to avoid flush then in K8 
 func (h *HttpRouters) Health(rw http.ResponseWriter, req *http.Request) {
-	h.logger.Info().
-			Str("func","Health").Send()
-
 	json.NewEncoder(rw).Encode(model.MessageRouter{Message: "true"})
 }
 
-// About return a live
+// About return a live, without log and trace to avoid flush then in K8 
 func (h *HttpRouters) Live(rw http.ResponseWriter, req *http.Request) {
-	h.logger.Info().
-			Str("func","Live").Send()
-
 	json.NewEncoder(rw).Encode(model.MessageRouter{Message: "true"})
 }
 
@@ -124,11 +121,10 @@ func (h *HttpRouters) Info(rw http.ResponseWriter, req *http.Request) {
 										time.Duration(h.appServer.Server.CtxTimeout) * time.Second)
     defer cancel()
 
-	// trace	
+	// trace and log	
 	ctx, span := tracerProvider.SpanCtx(ctx, "adapter.http.Info")
 	defer span.End()
 
-	// log with context
 	h.logger.Info().
 			Ctx(ctx).
 			Str("func","Info").Send()
@@ -142,15 +138,15 @@ func (h *HttpRouters) AddProduct(rw http.ResponseWriter, req *http.Request) erro
 	ctx, cancel := context.WithTimeout(req.Context(), time.Duration(h.appServer.Server.CtxTimeout) * time.Second)
     defer cancel()
 
-	// trace	
+	// trace and log	
 	ctx, span := tracerProvider.SpanCtx(ctx, "adapter.http.AddProduct")
 	defer span.End()
 	
-	// log with context
 	h.logger.Info().
 			Ctx(ctx).
 			Str("func","AddProduct").Send()
 
+	// decode payload		
 	product := model.Product{}
 	
 	err := json.NewDecoder(req.Body).Decode(&product)
@@ -160,13 +156,14 @@ func (h *HttpRouters) AddProduct(rw http.ResponseWriter, req *http.Request) erro
     }
 	defer req.Body.Close()
 
+	// call service
 	res, err := h.workerService.AddProduct(ctx, &product)
 	if err != nil {
 		trace_id := fmt.Sprintf("%v",ctx.Value("trace-request-id"))
 		return h.ErrorHandler(trace_id, err)
 	}
 	
-	return coreJson.WriteJSON(rw, http.StatusOK, res)
+	return coreMiddleWareWriteJSON.WriteJSON(rw, http.StatusOK, res)
 }
 
 // About get product
@@ -175,27 +172,28 @@ func (h *HttpRouters) GetProduct(rw http.ResponseWriter, req *http.Request) erro
 	ctx, cancel := context.WithTimeout(req.Context(), time.Duration(h.appServer.Server.CtxTimeout) * time.Second)
     defer cancel()
 
-	// trace	
+	// trace and log	
 	ctx, span := tracerProvider.SpanCtx(ctx, "adapter.http.GetProduct")
 	defer span.End()
 
-	// log with context
 	h.logger.Info().
 			Ctx(ctx).
 			Str("func","GetProduct").Send()
 
+	// decode payload				
 	vars := mux.Vars(req)
 	varID := vars["id"]
 
 	product := model.Product{Sku: varID}
 	
+	// call service	
 	res, err := h.workerService.GetProduct(ctx, &product)
 	if err != nil {
 		trace_id := fmt.Sprintf("%v",ctx.Value("trace-request-id"))
 		return h.ErrorHandler(trace_id, err)
 	}
 	
-	return coreJson.WriteJSON(rw, http.StatusOK, res)
+	return coreMiddleWareWriteJSON.WriteJSON(rw, http.StatusOK, res)
 }
 
 // About get inventory
@@ -204,27 +202,65 @@ func (h *HttpRouters) GetInventory(rw http.ResponseWriter, req *http.Request) er
 	ctx, cancel := context.WithTimeout(req.Context(), time.Duration(h.appServer.Server.CtxTimeout) * time.Second)
     defer cancel()
 
-	// trace	
+	// trace and log	
 	ctx, span := tracerProvider.SpanCtx(ctx, "adapter.http.GetInventory")
 	defer span.End()
 
-	// log with context
 	h.logger.Info().
 			Ctx(ctx).
 			Str("func","GetInventory").Send()
 
+	// decode payload	
 	vars := mux.Vars(req)
 	varID := vars["id"]
 
-	inventory := model.Inventory{ 
-									Product: model.Product{Sku: varID} ,
-								}
+	inventory := model.Inventory{Product: model.Product{Sku: varID},}
 
+	// call service	
 	res, err := h.workerService.GetInventory(ctx, &inventory)
 	if err != nil {
 		trace_id := fmt.Sprintf("%v",ctx.Value("trace-request-id"))
 		return h.ErrorHandler(trace_id, err)
 	}
 	
-	return coreJson.WriteJSON(rw, http.StatusOK, res)
+	return coreMiddleWareWriteJSON.WriteJSON(rw, http.StatusOK, res)
+}
+
+// About update inventory
+func (h *HttpRouters) UpdateInventory(rw http.ResponseWriter, req *http.Request) error {
+	// extract context		
+	ctx, cancel := context.WithTimeout(req.Context(), time.Duration(h.appServer.Server.CtxTimeout) * time.Second)
+    defer cancel()
+
+	// trace and log	
+	ctx, span := tracerProvider.SpanCtx(ctx, "adapter.http.UpdateInventory")
+	defer span.End()
+
+	h.logger.Info().
+			Ctx(ctx).
+			Str("func","UpdateInventory").Send()
+
+	// decode payload	
+	inventory := model.Inventory{}
+	err := json.NewDecoder(req.Body).Decode(&inventory)
+    if err != nil {
+		trace_id := fmt.Sprintf("%v",ctx.Value("trace-request-id"))
+		return h.ErrorHandler(trace_id, erro.ErrBadRequest)
+    }
+	defer req.Body.Close()
+
+	// get put parameter		
+	vars := mux.Vars(req)
+	varSku := vars["id"]
+
+	inventory.Product.Sku = varSku
+
+	// call service	
+	res, err := h.workerService.UpdateInventory(ctx, &inventory)
+	if err != nil {
+		trace_id := fmt.Sprintf("%v",ctx.Value("trace-request-id"))
+		return h.ErrorHandler(trace_id, err)
+	}
+	
+	return coreMiddleWareWriteJSON.WriteJSON(rw, http.StatusOK, res)
 }

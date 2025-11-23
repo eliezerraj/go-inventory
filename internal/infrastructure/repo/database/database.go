@@ -11,8 +11,8 @@ import (
 		"github.com/go-inventory/shared/erro"
 		"github.com/go-inventory/internal/domain/model"
 
-		go_core_otel_trace "github.com/eliezerraj/go-core/otel/trace"
-		go_core_db_pg "github.com/eliezerraj/go-core/database/postgre"
+		go_core_otel_trace "github.com/eliezerraj/go-core/v2/otel/trace"
+		go_core_db_pg "github.com/eliezerraj/go-core/v2/database/postgre"
 )
 
 var tracerProvider go_core_otel_trace.TracerProvider
@@ -40,6 +40,7 @@ func NewWorkerRepository(databasePG *go_core_db_pg.DatabasePGServer,
 // Above get stats from database
 func (w *WorkerRepository) Stat(ctx context.Context) (go_core_db_pg.PoolStats){
 	w.logger.Info().
+			Ctx(ctx).
 			Str("func","Stat").Send()
 	
 	stats := w.DatabasePG.Stat()
@@ -86,14 +87,16 @@ func (w* WorkerRepository) AddProduct(ctx context.Context,
 	query := `INSERT INTO product ( sku, 
 									type,
 									name,
+									status,
 									created_at) 
-				VALUES($1, $2, $3, $4) RETURNING id`
+				VALUES($1, $2, $3, $4, $5) RETURNING id`
 
 	row := tx.QueryRow(	ctx, 
 						query,
 						product.Sku,
 						product.Type, 
 						product.Name,
+						product.Status,
 						product.CreatedAt)
 						
 	if err := row.Scan(&id); err != nil {
@@ -138,7 +141,8 @@ func (w *WorkerRepository) GetProduct(ctx context.Context,
 	query := `SELECT id, 
 					sku, 
 					type,
-					name, 
+					name,
+					status,
 					created_at, 
 					updated_at
 				FROM product 
@@ -167,6 +171,7 @@ func (w *WorkerRepository) GetProduct(ctx context.Context,
 							&res_product.Sku, 
 							&res_product.Type,
 							&res_product.Name,
+							&res_product.Status,
 							&res_product.CreatedAt,
 							&nullUpdatedAt,
 						)
@@ -217,22 +222,21 @@ func (w* WorkerRepository) AddInventory(ctx context.Context,
 
 	//Prepare
 	var id int
-	//inventory.CreatedAt = time.Now()
 
 	// Query Execute
 	query := `INSERT INTO inventory ( 	fk_product_id,
 										available,
 										reserved,
-										total,
+										sold,
 										created_at) 
 				VALUES($1, $2, $3, $4, $5) RETURNING id`
 
 	row := tx.QueryRow(	ctx, 
 						query,
 						inventory.Product.ID,
-						inventory.QtdAvailable, 
-						inventory.QtdReserved,
-						inventory.QtdTotal,
+						inventory.Available, 
+						inventory.Reserved,
+						inventory.Sold,
 						inventory.CreatedAt)
 						
 	if err := row.Scan(&id); err != nil {
@@ -279,13 +283,14 @@ func (w *WorkerRepository) GetInventory(ctx context.Context,
 	query := `SELECT p.id, 
 					 p.sku, 
 					 p.type,
-					 p.name, 
+					 p.name,
+					 p.status,
 					 p.created_at, 
 					 p.updated_at,
 					 i.id,
 					 i.available,
 					 i.reserved,
-					 i.total,
+					 i.sold,
 					 i.created_at,
 					 i.updated_at
 				FROM product as p,
@@ -316,12 +321,13 @@ func (w *WorkerRepository) GetInventory(ctx context.Context,
 							&res_product.Sku, 
 							&res_product.Type,
 							&res_product.Name,
+							&res_product.Status,
 							&res_product.CreatedAt,
 							&nullProductUpdatedAt,
 							&res_inventory.ID, 
-							&res_inventory.QtdAvailable, 
-							&res_inventory.QtdReserved, 
-							&res_inventory.QtdTotal,
+							&res_inventory.Available, 
+							&res_inventory.Reserved, 
+							&res_inventory.Sold,
 							&res_inventory.CreatedAt,
 							&nullInventoryUpdatedAt,
 						)
@@ -351,4 +357,58 @@ func (w *WorkerRepository) GetInventory(ctx context.Context,
 			Err(err).Send()
 
 	return nil, erro.ErrNotFound
+}
+
+// About update a Inventory
+func (w* WorkerRepository) UpdateInventory(ctx context.Context, 
+											tx pgx.Tx, 
+											inventory *model.Inventory) (int64, error){
+
+	w.logger.Info().
+			Ctx(ctx).
+			Str("func","UpdateInventory").Send()
+
+	// trace
+	ctx, span := tracerProvider.SpanCtx(ctx, "database.UpdateInventory(skip_row)")
+	defer span.End()
+
+	conn, err := w.DatabasePG.Acquire(ctx)
+	if err != nil {
+		w.logger.Error().
+				Ctx(ctx).
+				Err(err).Send()
+		return 0, errors.New(err.Error())
+	}
+	defer w.DatabasePG.Release(conn)
+
+	// Query Execute
+	query := `UPDATE inventory
+				SET available = available + $3,
+					reserved = reserved + $4,
+					sold = sold + $5,
+					updated_at = $2
+				WHERE id = (SELECT id 
+							FROM inventory
+							WHERE fk_product_id = $1
+							ORDER BY id
+							FOR UPDATE SKIP LOCKED 
+							LIMIT 1)`
+
+	row, err := tx.Exec(ctx, 
+						query,	
+						inventory.Product.ID,
+						inventory.UpdatedAt,		
+						inventory.Available,
+						inventory.Reserved,
+						inventory.Sold,
+					)
+	if err != nil {
+		w.logger.Error().
+				Ctx(ctx).
+				Str("func","UpdateInventory").
+				Err(err).Send()
+		return 0, errors.New(err.Error())
+	}
+
+	return row.RowsAffected(), nil
 }

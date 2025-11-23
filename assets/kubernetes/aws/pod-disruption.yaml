@@ -1,0 +1,10 @@
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: pdb-go-inventory
+  namespace: test-a
+spec:
+  minAvailable: 0
+  selector:
+    matchLabels:
+        app: go-inventory

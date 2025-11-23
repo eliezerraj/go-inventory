@@ -10,8 +10,9 @@ import (
 	"github.com/go-inventory/shared/erro"
 
 	database "github.com/go-inventory/internal/infrastructure/repo/database"
-	go_core_db_pg "github.com/eliezerraj/go-core/database/postgre"
-	go_core_otel_trace "github.com/eliezerraj/go-core/otel/trace"
+
+	go_core_db_pg "github.com/eliezerraj/go-core/v2/database/postgre"
+	go_core_otel_trace "github.com/eliezerraj/go-core/v2/otel/trace"
 )
 
 var tracerProvider go_core_otel_trace.TracerProvider
@@ -39,19 +40,27 @@ func NewWorkerService(	workerRepository *database.WorkerRepository,
 // About check health service
 func (s * WorkerService) HealthCheck(ctx context.Context) error{
 	s.logger.Info().
+			Ctx(ctx).
 			Str("func","HealthCheck").Send()
 
+	ctx, span := tracerProvider.SpanCtx(ctx, "service.HealthCheck")
+	defer span.End()
+
 	// Check database health
+	_, spanDB := tracerProvider.SpanCtx(ctx, "DatabasePG.Ping")
 	err := s.workerRepository.DatabasePG.Ping()
 	if err != nil {
 		s.logger.Error().
-				Err(err).Msg("*** Database HEALTH FAILED ***")
+				Ctx(ctx).
+				Err(err).Msg("*** Database HEALTH CHECK FAILED ***")
 		return erro.ErrHealthCheck
 	}
+	spanDB.End()
 
 	s.logger.Info().
+			Ctx(ctx).
 			Str("func","HealthCheck").
-			Msg("*** Database HEALTH SUCCESSFULL ***")
+			Msg("*** Database HEALTH CHECK SUCCESSFULL ***")
 
 	return nil
 }
@@ -59,6 +68,7 @@ func (s * WorkerService) HealthCheck(ctx context.Context) error{
 // About database stats
 func (s *WorkerService) Stat(ctx context.Context) (go_core_db_pg.PoolStats){
 	s.logger.Info().
+			Ctx(ctx).
 			Str("func","Stat").Send()
 
 	return s.workerRepository.Stat(ctx)
@@ -67,20 +77,17 @@ func (s *WorkerService) Stat(ctx context.Context) (go_core_db_pg.PoolStats){
 // About create a product
 func (s *WorkerService) AddProduct(ctx context.Context, 
 									product *model.Product) (*model.Inventory, error){
-	// trace
-	ctx, span := tracerProvider.SpanCtx(ctx, "service.AddProduct")
-	defer span.End()
-
 	s.logger.Info().
 			Ctx(ctx).
 			Str("func","AddProduct").Send()
+	// trace
+	ctx, span := tracerProvider.SpanCtx(ctx, "service.AddProduct")
 
 	// prepare database
 	tx, conn, err := s.workerRepository.DatabasePG.StartTx(ctx)
 	if err != nil {
 		return nil, err
 	}
-	defer s.workerRepository.DatabasePG.ReleaseTx(conn)
 
 	// handle connection
 	defer func() {
@@ -89,11 +96,13 @@ func (s *WorkerService) AddProduct(ctx context.Context,
 		} else {
 			tx.Commit(ctx)
 		}
+		s.workerRepository.DatabasePG.ReleaseTx(conn)
 		span.End()
 	}()
 
 	// prepare data
-	product.CreatedAt = time.Now()
+	now := time.Now()
+	product.CreatedAt = now
 
 	// Create product
 	res_product, err := s.workerRepository.AddProduct(ctx, tx, product)
@@ -104,13 +113,13 @@ func (s *WorkerService) AddProduct(ctx context.Context,
 	// Setting PK
 	product.ID = res_product.ID
 
-	// Prepate inventory
+	// Create a default inventory
 	inventory := model.Inventory{
-		Product: 		*res_product,
-		QtdAvailable:	1000,
-		QtdReserved:	0,
-		QtdTotal:		1000, 	
-		CreatedAt:		time.Now(),
+		Product: 	*res_product,
+		Available:	1000,
+		Reserved:	0,
+		Sold:		0, 	
+		CreatedAt:	now,
 	}
 	//Create inventory
 	res_inventory, err := s.workerRepository.AddInventory(ctx, tx, &inventory)
@@ -141,7 +150,7 @@ func (s * WorkerService) GetProduct(ctx context.Context, product *model.Product)
 	return res, nil
 }
 
-// About get a product
+// About get inventory
 func (s * WorkerService) GetInventory(ctx context.Context, inventory *model.Inventory) (*model.Inventory, error){
 	// Trace
 	ctx, span := tracerProvider.SpanCtx(ctx, "service.GetInventory")
@@ -158,4 +167,59 @@ func (s * WorkerService) GetInventory(ctx context.Context, inventory *model.Inve
 	}
 
 	return res, nil
+}
+
+// About get inventory
+func (s * WorkerService) UpdateInventory(ctx context.Context, inventory *model.Inventory) (*model.Inventory, error){
+	s.logger.Info().
+			Ctx(ctx).
+			Str("func","UpdateInventory").Send()
+	// Trace
+	ctx, span := tracerProvider.SpanCtx(ctx, "service.UpdateInventory")
+	
+	// prepare database
+	tx, conn, err := s.workerRepository.DatabasePG.StartTx(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	// handle connection
+	defer func() {
+		if err != nil {
+			tx.Rollback(ctx)
+		} else {
+			tx.Commit(ctx)
+		}
+		s.workerRepository.DatabasePG.ReleaseTx(conn)
+		span.End()
+	}()
+
+	// Get product info
+	// Call a service
+	resInventory, err := s.workerRepository.GetInventory(ctx, inventory)
+	if err != nil {
+		return nil, err
+	}
+
+	// set data for update
+	now := time.Now()
+	inventory.UpdatedAt = &now
+	inventory.ID = resInventory.ID
+	inventory.Product = resInventory.Product
+
+	// Call a service
+	row, err := s.workerRepository.UpdateInventory(ctx, tx, inventory)
+	if err != nil {
+		return nil, err
+	}
+	
+	// whenever zero rows was update, for the skip lock clausule, a new rows must be inserted
+	if row == 0 {
+		_, err := s.workerRepository.AddInventory(ctx, tx, resInventory)
+		if err != nil {
+			return nil, err
+		}
+
+	}
+	return resInventory, nil
 }

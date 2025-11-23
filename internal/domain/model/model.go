@@ -2,8 +2,8 @@ package model
 
 import (
 	"time"
-	go_core_db_pg 		"github.com/eliezerraj/go-core/database/postgre"
-	go_core_otel_trace "github.com/eliezerraj/go-core/otel/trace"
+	go_core_db_pg 		"github.com/eliezerraj/go-core/v2/database/postgre"
+	go_core_otel_trace "github.com/eliezerraj/go-core/v2/otel/trace"
 )
 
 type AppServer struct {
@@ -45,16 +45,17 @@ type Product struct {
 	Sku			string		`json:"sku,omitempty"`
 	Type		string 		`json:"type,omitempty"`
 	Name		string 		`json:"name,omitempty"`
+	Status		string 		`json:"status,omitempty"`
 	CreatedAt	time.Time 	`json:"created_at,omitempty"`
 	UpdatedAt	*time.Time 	`json:"update_at,omitempty"`	
 }
 
 type Inventory struct {
-	ID				int	`json:"id,omitempty"`
+	ID				int		`json:"id,omitempty"`
 	Product 		Product	 `json:"product"`
-	QtdAvailable	int	`json:"qtd_available,omitempty"`
-	QtdReserved		int	`json:"qtd_reserved,omitempty"`
-	QtdTotal		int	`json:"qtd_total,omitempty"` 	
+	Available		int		`json:"available,omitempty"`
+	Reserved		int		`json:"reserved,omitempty"`
+	Sold			int		`json:"sold,omitempty"` 	
 	CreatedAt		time.Time 	`json:"created_at,omitempty"`
 	UpdatedAt		*time.Time 	`json:"update_at,omitempty"`	
 }

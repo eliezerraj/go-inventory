@@ -12,17 +12,26 @@ import(
 	"github.com/rs/zerolog"
 	"github.com/gorilla/mux"
 
-	go_core_midleware "github.com/eliezerraj/go-core/middleware"
+	go_core_midleware "github.com/eliezerraj/go-core/v2/middleware"
 
 	"github.com/go-inventory/internal/domain/model"
 	app_http_routers "github.com/go-inventory/internal/infrastructure/adapter/http"
 
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"go.opentelemetry.io/contrib/instrumentation/github.com/gorilla/mux/otelmux"
+
+	//metrics
+	go_core_otel_metric "github.com/eliezerraj/go-core/v2/otel/metric"
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/metric"
+	"go.opentelemetry.io/otel/attribute"
 )
 
+// metrics variables
 var(
-	go_core_middleware go_core_midleware.ToolsMiddleware
+	tpsMetric 		metric.Int64Counter	
+	meter     		metric.Meter
+	latencyMetric  	metric.Float64Histogram
 )
 
 type HttpAppServer struct {
@@ -46,17 +55,60 @@ func NewHttpAppServer(	appServer *model.AppServer,
 	}
 }
 
+// About start http server
 func (h *HttpAppServer) StartHttpAppServer(	ctx context.Context, 
 											appHttpRouters app_http_routers.HttpRouters,
 											) {
 	h.logger.Info().
+			Ctx(ctx).
 			Str("func","StartHttpAppServer").Send()
 
+	// ------------------------------
+	if h.appServer.Application.OtelTraces {
+		appInfoMetric := go_core_otel_metric.InfoMetric{Name: h.appServer.Application.Name,
+														Version: h.appServer.Application.Version,
+													}
+
+		metricProvider, err := go_core_otel_metric.NewMeterProvider(ctx, 
+																	appInfoMetric, 
+																	h.logger)
+		if err != nil {
+			h.logger.Warn().
+					Ctx(ctx).
+					Err(err).
+					Msg("error create a MetricProvider WARNING")
+		}
+		otel.SetMeterProvider(metricProvider)
+
+		meter = metricProvider.Meter(h.appServer.Application.Name )
+
+		tpsMetric, err = meter.Int64Counter("transaction_request_custom")
+		if err != nil {
+			h.logger.Warn().
+				Ctx(ctx).
+				Err(err).
+				Msg("error create a TPS METRIC WARNING")
+		}
+
+		latencyMetric, err = meter.Float64Histogram("latency_request_custom")
+			if err != nil {
+			h.logger.Warn().
+				Ctx(ctx).
+				Err(err).
+				Msg("error create a LATENCY METRIC WARNING")
+		}
+	}
+   //----------------------------------------
+
+	// create a middleware component		
 	appRouter := mux.NewRouter().StrictSlash(true)
-	appRouter.Use(go_core_middleware.MiddleWareHandlerHeader)
+
+	appMiddleWare := go_core_midleware.NewMiddleWare(h.logger)	
+	appRouter.Use(appMiddleWare.MiddleWareHandlerHeader)
 
 	appRouter.Handle("/metrics", promhttp.Handler())
 
+	// setting routers
 	health := appRouter.Methods(http.MethodGet, http.MethodOptions).Subrouter()
     health.HandleFunc("/health", appHttpRouters.Health)
 
@@ -74,19 +126,22 @@ func (h *HttpAppServer) StartHttpAppServer(	ctx context.Context,
 	info.Use(otelmux.Middleware(h.appServer.Application.Name))
 
 	add := appRouter.Methods(http.MethodPost, http.MethodOptions).Subrouter()
-	add.HandleFunc("/product", go_core_middleware.MiddleWareErrorHandler(appHttpRouters.AddProduct))		
+	add.HandleFunc("/product",  middlewareMetric( appMiddleWare.MiddleWareErrorHandler(appHttpRouters.AddProduct)) )		
 	add.Use(otelmux.Middleware(h.appServer.Application.Name))
 
 	get := appRouter.Methods(http.MethodGet, http.MethodOptions).Subrouter()
-	get.HandleFunc("/product/{id}",go_core_middleware.MiddleWareErrorHandler(appHttpRouters.GetProduct))		
+	get.HandleFunc("/product/{id}", middlewareMetric( appMiddleWare.MiddleWareErrorHandler(appHttpRouters.GetProduct)) )		
 	get.Use(otelmux.Middleware(h.appServer.Application.Name))
 
 	getInv := appRouter.Methods(http.MethodGet, http.MethodOptions).Subrouter()
-	getInv.HandleFunc("/inventory/product/{id}",go_core_middleware.MiddleWareErrorHandler(appHttpRouters.GetInventory))		
+	getInv.HandleFunc("/inventory/product/{id}", middlewareMetric( appMiddleWare.MiddleWareErrorHandler(appHttpRouters.GetInventory)) )		
 	getInv.Use(otelmux.Middleware(h.appServer.Application.Name))
 
+	put := appRouter.Methods(http.MethodPut, http.MethodOptions).Subrouter()
+	put.HandleFunc("/inventory/product/{id}", middlewareMetric( appMiddleWare.MiddleWareErrorHandler(appHttpRouters.UpdateInventory)) )		
+	put.Use(otelmux.Middleware(h.appServer.Application.Name))
+		
 	// -------   Server Http 
-
 	srv := http.Server{
 		Addr:         ":" +  strconv.Itoa(h.appServer.Server.Port),      	
 		Handler:      appRouter,                	          
@@ -98,6 +153,7 @@ func (h *HttpAppServer) StartHttpAppServer(	ctx context.Context,
 	h.logger.Info().
 				Str("Service Port", strconv.Itoa(h.appServer.Server.Port)).Send()
 
+	// start server
 	go func() {
 		err := srv.ListenAndServe()
 		if err != nil {
@@ -106,7 +162,7 @@ func (h *HttpAppServer) StartHttpAppServer(	ctx context.Context,
 		}
 	}()
 
-	// Get SIGNALS
+	// Get SIGNALS and handle shutdown
 	ch := make(chan os.Signal, 1)
 	signal.Notify(ch, syscall.SIGHUP, syscall.SIGINT, syscall.SIGTERM)
 
@@ -116,21 +172,48 @@ func (h *HttpAppServer) StartHttpAppServer(	ctx context.Context,
 		switch sig {
 		case syscall.SIGHUP:
 			h.logger.Info().
+					Ctx(ctx).
 					Msg("Received SIGHUP: Reloading Configuration...")
 		case syscall.SIGINT, syscall.SIGTERM:
 			h.logger.Info().
+					Ctx(ctx).
 					Msg("Received SIGINT/SIGTERM: Http Server Exit ...")
 			return
 		default:
 			h.logger.Info().
+					Ctx(ctx).
 					Interface("Received signal:", sig).Send()
 		}
 	}
 
 	if err := srv.Shutdown(ctx); err != nil && err != http.ErrServerClosed {
 		h.logger.Warn().
+				Ctx(ctx).
 				Err(err).
 				Msg("Dirty shutdown WARNING !!!")
 		return
 	}
-}	
+}
+
+func middlewareMetric(next http.HandlerFunc) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		start := time.Now()
+
+		tpsMetric.Add(r.Context(), 1,
+			metric.WithAttributes(
+				attribute.String("method", r.Method),
+				attribute.String("path", r.URL.Path),
+			),
+		)
+
+		next(w, r)
+
+		duration := time.Since(start).Seconds()
+		latencyMetric.Record(r.Context(), duration,
+			metric.WithAttributes(
+				attribute.String("method", r.Method),
+				attribute.String("path", r.URL.Path),
+			),
+		)
+	}
+}
