@@ -14,10 +14,10 @@ Parameters:
       - prd
   BusinessUnitName:
     Type: String
-    Default: global
+    Default: architecture
   PlatformName:
     Type: String
-    Default: dockone
+    Default: architecture
   ApplicationName:
     Type: String
     Default: go-inventory

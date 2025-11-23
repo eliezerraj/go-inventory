@@ -56,7 +56,7 @@ jobs:
 
   infra-as-code:
     runs-on: ubuntu-latest
-    needs: [ setup-environment, build, package-and-publish ]
+    needs: [ setup-environment, build]
     permissions:
       id-token: write
       contents: read
@@ -91,7 +91,7 @@ jobs:
 
   package-and-publish:
     runs-on: ubuntu-latest
-    needs: [ setup-environment, build ]
+    needs: [ setup-environment, build, infra-as-code ]
     permissions:
       id-token: write
       contents: read
