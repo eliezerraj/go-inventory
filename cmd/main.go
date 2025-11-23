@@ -20,6 +20,7 @@ import(
 	go_core_otel_trace 	"github.com/eliezerraj/go-core/v2/otel/trace"
 	go_core_db_pg 		"github.com/eliezerraj/go-core/v2/database/postgre"
 
+	// traces
 	sdktrace "go.opentelemetry.io/otel/sdk/trace"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/propagation"
@@ -113,9 +114,9 @@ func main (){
 		appInfoTrace.Account = appServer.Application.Account
 
 		sdkTracerProvider = appTracerProvider.NewTracerProvider(ctx, 
-															*appServer.EnvTrace, 
-															appInfoTrace,
-															&appLogger)
+																*appServer.EnvTrace, 
+																appInfoTrace,
+																&appLogger)
 
 		otel.SetTextMapPropagator(propagation.TraceContext{})
 		otel.SetTracerProvider(sdkTracerProvider)
@@ -132,10 +133,14 @@ func main (){
 		if err != nil {
 			if count < 3 {
 				logger.Warn().
-						Err(err).Msg("error open database... trying again WARNING")
+					   Ctx(ctx).
+					   Err(err).
+					   Msg("error open database... trying again WARNING")
 			} else {
 				logger.Fatal().
-						Err(err).Msg("Fatal Error open Database ABORTING")
+					   Ctx(ctx).
+					   Err(err).
+					   Msg("Fatal Error open Database ABORTING")
 				panic(err)
 			}
 			time.Sleep(3 * time.Second) //backoff
@@ -163,10 +168,13 @@ func main (){
 	err = workerService.HealthCheck(ctx)
 	if err != nil {
 		logger.Error().
-					Err(err).Msg("Error health check support services ERROR")
+			   Ctx(ctx).
+			   Err(err).
+			   Msg("Error health check support services ERROR")
 	} else {
 		logger.Info().
-					Msg("SERVICES HEALTH CHECK OK")
+			   Ctx(ctx).
+			   Msg("SERVICES HEALTH CHECK OK")
 	}
 
 	// Cancel everything
@@ -176,8 +184,9 @@ func main (){
 			err := sdkTracerProvider.Shutdown(ctx)
 			if err != nil{
 				logger.Error().
-						Err(err).
-						Msg("Erro to shutdown tracer provider")
+				       Ctx(ctx).
+					   Err(err). 
+					   Msg("Erro to shutdown tracer provider")
 			}
 		}
 		
@@ -188,7 +197,8 @@ func main (){
 		cancel()
 
 		logger.Info().
-				Msgf("App %s Finalized SUCCESSFULL !!!", appServer.Application.Name)
+			   Ctx(ctx).
+			   Msgf("App %s Finalized SUCCESSFULL !!!", appServer.Application.Name)
 	}()
 
 	// Start web server

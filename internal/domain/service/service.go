@@ -40,17 +40,25 @@ func NewWorkerService(	workerRepository *database.WorkerRepository,
 // About check health service
 func (s * WorkerService) HealthCheck(ctx context.Context) error{
 	s.logger.Info().
+			Ctx(ctx).
 			Str("func","HealthCheck").Send()
 
+	ctx, span := tracerProvider.SpanCtx(ctx, "service.HealthCheck")
+	defer span.End()
+
 	// Check database health
+	_, spanDB := tracerProvider.SpanCtx(ctx, "DatabasePG.Ping")
 	err := s.workerRepository.DatabasePG.Ping()
 	if err != nil {
 		s.logger.Error().
+				Ctx(ctx).
 				Err(err).Msg("*** Database HEALTH CHECK FAILED ***")
 		return erro.ErrHealthCheck
 	}
+	spanDB.End()
 
 	s.logger.Info().
+			Ctx(ctx).
 			Str("func","HealthCheck").
 			Msg("*** Database HEALTH CHECK SUCCESSFULL ***")
 
@@ -60,6 +68,7 @@ func (s * WorkerService) HealthCheck(ctx context.Context) error{
 // About database stats
 func (s *WorkerService) Stat(ctx context.Context) (go_core_db_pg.PoolStats){
 	s.logger.Info().
+			Ctx(ctx).
 			Str("func","Stat").Send()
 
 	return s.workerRepository.Stat(ctx)
@@ -68,12 +77,11 @@ func (s *WorkerService) Stat(ctx context.Context) (go_core_db_pg.PoolStats){
 // About create a product
 func (s *WorkerService) AddProduct(ctx context.Context, 
 									product *model.Product) (*model.Inventory, error){
-	// trace
-	ctx, span := tracerProvider.SpanCtx(ctx, "service.AddProduct")
-
 	s.logger.Info().
 			Ctx(ctx).
 			Str("func","AddProduct").Send()
+	// trace
+	ctx, span := tracerProvider.SpanCtx(ctx, "service.AddProduct")
 
 	// prepare database
 	tx, conn, err := s.workerRepository.DatabasePG.StartTx(ctx)
@@ -163,13 +171,12 @@ func (s * WorkerService) GetInventory(ctx context.Context, inventory *model.Inve
 
 // About get inventory
 func (s * WorkerService) UpdateInventory(ctx context.Context, inventory *model.Inventory) (*model.Inventory, error){
-	// Trace
-	ctx, span := tracerProvider.SpanCtx(ctx, "service.UpdateInventory")
-
 	s.logger.Info().
 			Ctx(ctx).
 			Str("func","UpdateInventory").Send()
-
+	// Trace
+	ctx, span := tracerProvider.SpanCtx(ctx, "service.UpdateInventory")
+	
 	// prepare database
 	tx, conn, err := s.workerRepository.DatabasePG.StartTx(ctx)
 	if err != nil {

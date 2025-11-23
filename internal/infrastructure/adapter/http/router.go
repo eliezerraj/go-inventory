@@ -46,7 +46,7 @@ func NewHttpRouters(appServer *model.AppServer,
 	logger := appLogger.With().
 						Str("package", "adapter.http").
 						Logger()
-
+			
 	logger.Info().
 			Str("func","NewHttpRouters").Send()
 
@@ -86,19 +86,13 @@ func (h *HttpRouters) ErrorHandler(trace_id string, err error) *go_core_midlewar
 	return &coreMiddleWareApiError
 }
 
-// About return a health
+// About return a health, without log and trace to avoid flush then in K8 
 func (h *HttpRouters) Health(rw http.ResponseWriter, req *http.Request) {
-	h.logger.Info().
-			Str("func","Health").Send()
-
 	json.NewEncoder(rw).Encode(model.MessageRouter{Message: "true"})
 }
 
-// About return a live
+// About return a live, without log and trace to avoid flush then in K8 
 func (h *HttpRouters) Live(rw http.ResponseWriter, req *http.Request) {
-	h.logger.Info().
-			Str("func","Live").Send()
-
 	json.NewEncoder(rw).Encode(model.MessageRouter{Message: "true"})
 }
 

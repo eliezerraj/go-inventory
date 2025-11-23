@@ -16,7 +16,7 @@
     );
 
     CREATE UNIQUE INDEX product_sku_unique_idx ON public.product USING btree (sku);
-
+    
     CREATE TABLE public.inventory (
         id 				BIGSERIAL	NOT NULL,
         fk_product_id	BIGSERIAL	NOT NULL,
