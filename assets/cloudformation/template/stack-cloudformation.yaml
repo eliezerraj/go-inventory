@@ -46,7 +46,7 @@ Parameters:
   ServiceAccountName:
     Type: String
     Description: The name of the Kubernetes service account.
-    Default: sa-go-inventory-pod-identity
+    Default: sa-go-inventory
 
 Resources:
   EcrRepo:
