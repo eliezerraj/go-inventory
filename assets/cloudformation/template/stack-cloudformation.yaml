@@ -140,6 +140,7 @@ Resources:
             - secretsmanager:GetResourcePolicy
             - secretsmanager:GetSecretValue
             - secretsmanager:DescribeSecret
+            - secretsmanager:ListSecrets
             - secretsmanager:ListSecretVersionIds
             Resource: '*'
             Effect: Allow
