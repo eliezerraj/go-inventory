@@ -175,7 +175,7 @@ Resources:
       RoleArn: !GetAtt PodIdentityIAMRole.Arn
 
   ESOPodIdentityAssociation:
-    Type: AWS::EKS::ESOPodIdentityAssociation
+    Type: AWS::EKS::PodIdentityAssociation
     Properties:
       ClusterName: !Ref ClusterName
       Namespace: external-secrets 
