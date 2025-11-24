@@ -118,8 +118,52 @@ Resources:
             Action:
               - 'sts:AssumeRole'
               - 'sts:TagSession'
-      ManagedPolicyArns:
-        - arn:aws:iam::aws:policy/AmazonS3ReadOnlyAccess
+      Policies:
+      - PolicyName: PodGoInventoryPolicy
+        PolicyDocument:
+          Statement:
+          - Action: #TODO add custom policy for S3
+            - s3:PutObject
+            Resource: '*'
+            Effect: Allow
+          - Action: #TODO add custom policy for SQS            
+              - sqs:SendMessage
+              - sqs:ReceiveMessage
+              - sqs:DeleteMessage
+              - sqs:GetQueueAttributes
+              - sqs:GetQueueUrl
+              - sqs:CreateQueue
+            Resource: '*'
+            Effect: Allow
+          - Action:
+            - kms:Decrypt
+            - secretsmanager:GetResourcePolicy
+            - secretsmanager:GetSecretValue
+            - secretsmanager:DescribeSecret
+            - secretsmanager:ListSecretVersionIds
+            Resource: '*'
+            Effect: Allow
+          - Action:
+            - elasticfilesystem:DescribeAccessPoints
+            - elasticfilesystem:DescribeFileSystems
+            - elasticfilesystem:DescribeMountTargets
+            - ec2:DescribeAvailabilityZones
+            Resource: '*'
+            Effect: Allow
+          - Action:
+            - elasticfilesystem:CreateAccessPoint
+            Condition:
+              StringLike:
+                "aws:RequestTag/efs.csi.aws.com/cluster": true
+            Resource: '*'
+            Effect: Allow
+          - Action:
+            - elasticfilesystem:DeleteAccessPoint
+            Condition:
+              StringEquals:
+                "aws:ResourceTag/efs.csi.aws.com/cluster": true
+            Resource: '*'
+            Effect: Allow  
 
   PodIdentityAssociation:
     Type: AWS::EKS::PodIdentityAssociation
