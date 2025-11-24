@@ -14,5 +14,9 @@
   {
     "ParameterKey": "ClusterName",
     "ParameterValue": "arch-eks-01-02"
+  },
+  {
+    "ParameterKey": "ServiceAccountName",
+    "ParameterValue": "sa-go-inventory"
   }
 ]
