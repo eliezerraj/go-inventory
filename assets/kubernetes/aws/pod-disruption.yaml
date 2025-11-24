@@ -4,7 +4,7 @@ metadata:
   name: pdb-go-inventory
   namespace: test-a
 spec:
-  minAvailable: 0
+  minAvailable: 1
   selector:
     matchLabels:
         app: go-inventory
