@@ -72,7 +72,6 @@ func init(){
 	}
 
 	// prepare log
-	// assign to package-level appLogger (avoid := which would shadow it)
 	appLogger = zerolog.New(multiWriter).
 						With().
 						Timestamp().
