@@ -192,13 +192,97 @@ func (w *WorkerRepository) GetProduct(ctx context.Context,
 
 	w.logger.Warn().
 			Ctx(ctx).
-			Err(err).Send()
+			Err(erro.ErrNotFound).Send()
+
+	return nil, erro.ErrNotFound
+}
+
+// About get a product
+func (w *WorkerRepository) GetProductId(ctx context.Context, 
+										product *model.Product) (*model.Product, error){
+	// Trace
+	ctx, span := tracerProvider.SpanCtx(ctx, "database.GetProductId")
+	defer span.End()
+
+	w.logger.Info().
+			Ctx(ctx).
+			Str("func","GetProductId").Send()
+
+	// db connection
+	conn, err := w.DatabasePG.Acquire(ctx)
+	if err != nil {
+		w.logger.Error().
+				Ctx(ctx).
+				Err(err).Send()
+		return nil, errors.New(err.Error())
+	}
+	defer w.DatabasePG.Release(conn)
+
+	// Prepare
+	res_product := model.Product{}
+	var nullUpdatedAt sql.NullTime
+
+	// Query and Execute
+	query := `SELECT id, 
+					sku, 
+					type,
+					name,
+					status,
+					created_at, 
+					updated_at
+				FROM product 
+				WHERE id =$1`
+
+	rows, err := conn.Query(ctx, 
+							query, 
+							product.ID)
+	if err != nil {
+		w.logger.Error().
+				Ctx(ctx).
+				Err(err).Send()
+		return nil, errors.New(err.Error())
+	}
+	defer rows.Close()
+
+    if err := rows.Err(); err != nil {
+		w.logger.Error().
+				Ctx(ctx).
+				Err(err).Msg("fatal error closing rows")
+        return nil, errors.New(err.Error())
+    }
+
+	for rows.Next() {
+		err := rows.Scan(	&res_product.ID, 
+							&res_product.Sku, 
+							&res_product.Type,
+							&res_product.Name,
+							&res_product.Status,
+							&res_product.CreatedAt,
+							&nullUpdatedAt,
+						)
+		if err != nil {
+			w.logger.Error().
+					Ctx(ctx).
+					Err(err).Send()
+			return nil, errors.New(err.Error())
+        }
+
+		if nullUpdatedAt.Valid {
+        	res_product.UpdatedAt = &nullUpdatedAt.Time
+    	} else {
+			res_product.UpdatedAt = nil
+		}
+		return &res_product, nil
+	}
+
+	w.logger.Warn().
+			Ctx(ctx).
+			Err(erro.ErrNotFound).Send()
 
 	return nil, erro.ErrNotFound
 }
 
 //--------------------------------------
-
 // About create a Inventory
 func (w* WorkerRepository) AddInventory(ctx context.Context, 
 										tx pgx.Tx, 
@@ -354,7 +438,7 @@ func (w *WorkerRepository) GetInventory(ctx context.Context,
 
 	w.logger.Warn().
 			Ctx(ctx).
-			Err(err).Send()
+			Err(erro.ErrNotFound).Send()
 
 	return nil, erro.ErrNotFound
 }

@@ -150,6 +150,26 @@ func (s * WorkerService) GetProduct(ctx context.Context, product *model.Product)
 	return res, nil
 }
 
+// About get a product
+func (s * WorkerService) GetProductId(ctx context.Context, product *model.Product) (*model.Product, error){
+	// Trace
+	ctx, span := tracerProvider.SpanCtx(ctx, "service.GetProductId")
+	defer span.End()
+
+	// log with context
+	s.logger.Info().
+			Ctx(ctx).
+			Str("func","GetProductId").Send()
+
+	// Call a service
+	res, err := s.workerRepository.GetProductId(ctx, product)
+	if err != nil {
+		return nil, err
+	}
+
+	return res, nil
+}
+
 // About get inventory
 func (s * WorkerService) GetInventory(ctx context.Context, inventory *model.Inventory) (*model.Inventory, error){
 	// Trace

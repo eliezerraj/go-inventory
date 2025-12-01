@@ -133,6 +133,10 @@ func (h *HttpAppServer) StartHttpAppServer(	ctx context.Context,
 	get.HandleFunc("/product/{id}", middlewareMetric( appMiddleWare.MiddleWareErrorHandler(appHttpRouters.GetProduct)) )		
 	get.Use(otelmux.Middleware(h.appServer.Application.Name))
 
+	getId := appRouter.Methods(http.MethodGet, http.MethodOptions).Subrouter()
+	getId.HandleFunc("/productId/{id}", middlewareMetric( appMiddleWare.MiddleWareErrorHandler(appHttpRouters.GetProductId)) )		
+	getId.Use(otelmux.Middleware(h.appServer.Application.Name))
+
 	getInv := appRouter.Methods(http.MethodGet, http.MethodOptions).Subrouter()
 	getInv.HandleFunc("/inventory/product/{id}", middlewareMetric( appMiddleWare.MiddleWareErrorHandler(appHttpRouters.GetInventory)) )		
 	getInv.Use(otelmux.Middleware(h.appServer.Application.Name))
