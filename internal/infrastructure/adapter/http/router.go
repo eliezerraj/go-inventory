@@ -3,6 +3,7 @@ package http
 import (
 	"fmt"
 	"time"
+	"strconv"
 	"reflect"
 	"net/http"
 	"context"
@@ -188,6 +189,42 @@ func (h *HttpRouters) GetProduct(rw http.ResponseWriter, req *http.Request) erro
 	
 	// call service	
 	res, err := h.workerService.GetProduct(ctx, &product)
+	if err != nil {
+		trace_id := fmt.Sprintf("%v",ctx.Value("trace-request-id"))
+		return h.ErrorHandler(trace_id, err)
+	}
+	
+	return coreMiddleWareWriteJSON.WriteJSON(rw, http.StatusOK, res)
+}
+
+// About get product
+func (h *HttpRouters) GetProductId(rw http.ResponseWriter, req *http.Request) error {
+	// extract context		
+	ctx, cancel := context.WithTimeout(req.Context(), time.Duration(h.appServer.Server.CtxTimeout) * time.Second)
+    defer cancel()
+
+	// trace and log	
+	ctx, span := tracerProvider.SpanCtx(ctx, "adapter.http.GetProductId")
+	defer span.End()
+
+	h.logger.Info().
+			Ctx(ctx).
+			Str("func","GetProductId").Send()
+
+	// decode payload				
+	vars := mux.Vars(req)
+	varID := vars["id"]
+	
+	varIDint, err := strconv.Atoi(varID)
+    if err != nil {
+		trace_id := fmt.Sprintf("%v",ctx.Value("trace-request-id"))
+		return h.ErrorHandler(trace_id, erro.ErrBadRequest)
+    }
+
+	product := model.Product{ID: varIDint}
+	
+	// call service	
+	res, err := h.workerService.GetProductId(ctx, &product)
 	if err != nil {
 		trace_id := fmt.Sprintf("%v",ctx.Value("trace-request-id"))
 		return h.ErrorHandler(trace_id, err)
