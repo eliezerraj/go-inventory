@@ -239,7 +239,6 @@ func (s * WorkerService) UpdateInventory(ctx context.Context, inventory *model.I
 		if err != nil {
 			return nil, err
 		}
-
 	}
 	return resInventory, nil
 }
