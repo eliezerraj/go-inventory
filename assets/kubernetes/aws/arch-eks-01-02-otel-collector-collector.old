@@ -1,0 +1,120 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  annotations:
+    deployment.kubernetes.io/revision: "1"
+  creationTimestamp: "2025-05-07T22:33:05Z"
+  generation: 5
+  labels:
+    app.kubernetes.io/component: opentelemetry-collector
+    app.kubernetes.io/instance: default.arch-eks-01-02-otel-collector
+    app.kubernetes.io/managed-by: opentelemetry-operator
+    app.kubernetes.io/name: arch-eks-01-02-otel-collector-collector
+    app.kubernetes.io/part-of: opentelemetry
+    app.kubernetes.io/version: latest
+  name: arch-eks-01-02-otel-collector-collector
+  namespace: default
+  ownerReferences:
+  - apiVersion: opentelemetry.io/v1beta1
+    blockOwnerDeletion: true
+    controller: true
+    kind: OpenTelemetryCollector
+    name: arch-eks-01-02-otel-collector
+    uid: 12b7c205-d758-44d3-9b4c-72b58136a0f0
+  resourceVersion: "118688832"
+  uid: 270d18c0-043d-458f-a20f-f03a251cb7a0
+spec:
+  progressDeadlineSeconds: 600
+  replicas: 1
+  revisionHistoryLimit: 10
+  selector:
+    matchLabels:
+      app.kubernetes.io/component: opentelemetry-collector
+      app.kubernetes.io/instance: default.arch-eks-01-02-otel-collector
+      app.kubernetes.io/managed-by: opentelemetry-operator
+      app.kubernetes.io/part-of: opentelemetry
+  strategy:
+    rollingUpdate:
+      maxSurge: 25%
+      maxUnavailable: 25%
+    type: RollingUpdate
+  template:
+    metadata:
+      annotations:
+        opentelemetry-operator-config/sha256: a3e3510150c28684b71a083da381b7453d1608982eefd0fcde96fab476b5c87c
+        prometheus.io/path: /metrics
+        prometheus.io/port: "8888"
+        prometheus.io/scrape: "true"
+      labels:
+        app.kubernetes.io/component: opentelemetry-collector
+        app.kubernetes.io/instance: default.arch-eks-01-02-otel-collector
+        app.kubernetes.io/managed-by: opentelemetry-operator
+        app.kubernetes.io/name: arch-eks-01-02-otel-collector-collector
+        app.kubernetes.io/part-of: opentelemetry
+        app.kubernetes.io/version: latest
+    spec:
+      containers:
+      - args:
+        - --config=/conf/collector.yaml
+        env:
+        - name: POD_NAME
+          valueFrom:
+            fieldRef:
+              apiVersion: v1
+              fieldPath: metadata.name
+        image: public.ecr.aws/aws-observability/aws-otel-collector:v0.43.2
+        imagePullPolicy: IfNotPresent
+        name: otc-container
+        ports:
+        - containerPort: 8888
+          name: metrics
+          protocol: TCP
+        - containerPort: 4317
+          name: otlp-grpc
+          protocol: TCP
+        - containerPort: 4318
+          name: otlp-http
+          protocol: TCP
+        resources: {}
+        terminationMessagePath: /dev/termination-log
+        terminationMessagePolicy: File
+        volumeMounts:
+        - mountPath: /conf
+          name: otc-internal
+      dnsConfig: {}
+      dnsPolicy: ClusterFirst
+      restartPolicy: Always
+      schedulerName: default-scheduler
+      securityContext: {}
+      serviceAccount: adot-collector
+      serviceAccountName: adot-collector
+      shareProcessNamespace: false
+      terminationGracePeriodSeconds: 30
+      volumes:
+      - configMap:
+          defaultMode: 420
+          items:
+          - key: collector.yaml
+            path: collector.yaml
+          name: arch-eks-01-02-otel-collector-collector-a3e35101
+        name: otc-internal
+status:
+  availableReplicas: 1
+  conditions:
+  - lastTransitionTime: "2025-05-07T22:33:05Z"
+    lastUpdateTime: "2025-05-07T22:35:00Z"
+    message: ReplicaSet "arch-eks-01-02-otel-collector-collector-68978fbf8" has successfully
+      progressed.
+    reason: NewReplicaSetAvailable
+    status: "True"
+    type: Progressing
+  - lastTransitionTime: "2025-12-03T18:12:59Z"
+    lastUpdateTime: "2025-12-03T18:12:59Z"
+    message: Deployment has minimum availability.
+    reason: MinimumReplicasAvailable
+    status: "True"
+    type: Available
+  observedGeneration: 5
+  readyReplicas: 1
+  replicas: 1
+  updatedReplicas: 1

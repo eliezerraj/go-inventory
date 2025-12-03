@@ -3,6 +3,7 @@ package database
 import (
 		"context"
 		"errors"
+		"strings"
 		"database/sql"
 
 		"github.com/rs/zerolog"
@@ -100,9 +101,17 @@ func (w* WorkerRepository) AddProduct(ctx context.Context,
 						product.CreatedAt)
 						
 	if err := row.Scan(&id); err != nil {
-		w.logger.Error().
-				Ctx(ctx).
-				Err(err).Send()
+			
+		if strings.Contains(err.Error(), "duplicate key value violates") {
+    		w.logger.Warn().
+					 Ctx(ctx).
+					 Err(err).Send()
+		} else {
+			w.logger.Error().
+					 Ctx(ctx).
+				     Err(err).Send()
+		}
+
 		return nil, errors.New(err.Error())
 	}
 
@@ -127,8 +136,8 @@ func (w *WorkerRepository) GetProduct(ctx context.Context,
 	conn, err := w.DatabasePG.Acquire(ctx)
 	if err != nil {
 		w.logger.Error().
-				Ctx(ctx).
-				Err(err).Send()
+			  	 Ctx(ctx).
+				 Err(err).Send()
 		return nil, errors.New(err.Error())
 	}
 	defer w.DatabasePG.Release(conn)
