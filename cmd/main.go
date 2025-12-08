@@ -24,7 +24,6 @@ import(
 	sdktrace "go.opentelemetry.io/otel/sdk/trace"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/propagation"
-	"go.opentelemetry.io/contrib/propagators/aws/xray"
 )
 
 // Global variables
@@ -117,12 +116,7 @@ func main (){
 																appInfoTrace,
 																&appLogger)
 
-	otel.SetTextMapPropagator(
-		propagation.NewCompositeTextMapPropagator(
-			propagation.TraceContext{}, // W3C
-			xray.Propagator{},          // AWS interop
-		),
-	)
+		otel.SetTextMapPropagator(propagation.TraceContext{})
 		otel.SetTracerProvider(sdkTracerProvider)
 		sdkTracerProvider.Tracer(appServer.Application.Name)
 	}
