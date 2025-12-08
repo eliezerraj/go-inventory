@@ -121,7 +121,6 @@ func main (){
     		propagation.NewCompositeTextMapPropagator(
 				propagation.TraceContext{}, // W3C
 				xray.Propagator{},          // AWS
-				propagation.Baggage{},
     		),
 		)
 		otel.SetTracerProvider(sdkTracerProvider)
