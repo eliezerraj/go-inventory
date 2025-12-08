@@ -14,6 +14,7 @@ spec:
             endpoint: 0.0.0.0:4317
           http:
             endpoint: 0.0.0.0:4318
+    
     exporters:
       otlp:
         endpoint: "grafana.architecture.caradhras.io:4317" 
@@ -25,6 +26,7 @@ spec:
           insecure: true
       prometheusremotewrite:
         endpoint: "grafana.architecture.caradhras.io:8889/api/v1/write"
+      awsxray: {}
 
     processors:
       resource:
@@ -44,7 +46,7 @@ spec:
         traces:
           receivers: [otlp]
           processors: [batch]
-          exporters: [otlp]
+          exporters: [otlp, awsxray]
         metrics:
           receivers: [otlp]
           processors: [batch]
