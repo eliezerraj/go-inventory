@@ -170,7 +170,8 @@ func (h *HttpRouters) AddProduct(rw http.ResponseWriter, req *http.Request) erro
 // About get product
 func (h *HttpRouters) GetProduct(rw http.ResponseWriter, req *http.Request) error {
 	// extract context		
-	ctx, cancel := context.WithTimeout(req.Context(), time.Duration(h.appServer.Server.CtxTimeout) * time.Second)
+	ctx, cancel := context.WithTimeout(req.Context(), 
+									   time.Duration(h.appServer.Server.CtxTimeout) * time.Second)
     defer cancel()
 
 	// trace and log	

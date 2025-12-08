@@ -15,8 +15,6 @@ spec:
           http:
             endpoint: 0.0.0.0:4318
     exporters:
-      otlphttp/loki:
-        endpoint: "http://loki:3100/otlp"
       otlp:
         endpoint: "grafana.architecture.caradhras.io:4317" 
         tls:
@@ -27,8 +25,6 @@ spec:
           insecure: true
       prometheusremotewrite:
         endpoint: "grafana.architecture.caradhras.io:8889/api/v1/write"
-      awsxray:
-        region: us-east-2
 
     processors:
       resource:
@@ -42,17 +38,13 @@ spec:
       batch:
         send_batch_size: 1000
         timeout: 10s
-        
+
     service:
       pipelines:
-        logs:
-          receivers: [otlp]
-          processors: [batch]
-          exporters: [otlphttp/loki]
         traces:
           receivers: [otlp]
           processors: [batch]
-          exporters: [otlp, awsxray]
+          exporters: [otlp]
         metrics:
           receivers: [otlp]
           processors: [batch]

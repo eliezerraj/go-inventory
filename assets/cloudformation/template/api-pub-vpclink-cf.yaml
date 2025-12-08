@@ -1,7 +1,7 @@
 AWSTemplateFormatVersion: '2010-09-09'
 Transform:
 - AWS::Serverless-2016-10-31
-Description: Apigateway Public VPCLink2 Integration v3.3 (Authorizer Same Account)- 28/11/2025
+Description: Apigateway Public VPCLink2 Integration v3.4 (Authorizer Same Account)- 28/11/2025
 
 Parameters:
   Versao:
@@ -38,10 +38,10 @@ Parameters:
     Default: go-api-inventory.architecture.caradhras.io
   AuthorizerUri:
     Type: String
-    Default: arn:aws:apigateway:us-east-2:lambda:path/2015-03-31/functions/arn:aws:lambda:us-east-2:908671954593:function:go-oauth-apigw-authorizer-lambda:live/invocations
+    Default: arn:aws:apigateway:us-east-2:lambda:path/2015-03-31/functions/arn:aws:lambda:us-east-2:908671954593:function:lambda-go-oauth2/invocations
   AuthorizerARN:
     Type: String
-    Default: arn:aws:lambda:us-east-2:908671954593:function:go-oauth-apigw-authorizer-lambda:live
+    Default: arn:aws:lambda:us-east-2:908671954593:function:lambda-go-oauth2:live
   EdgeCertificateArn:
     Type: String
     Default: arn:aws:acm:us-east-1:908671954593:certificate/6dfea057-7ca7-41b9-95a0-b63aaa6640a2 
@@ -255,7 +255,7 @@ Resources:
             responseTemplates:
               application/json: '{"error": { "id": "$context.requestId", "description":
                 "Too many requests", "code": "429"}}'
-      Description: API Pulic Lambda Integration
+      Description: !Sub "Api ${ApiPublicName} service"
       DisableExecuteApiEndpoint: true
       EndpointConfiguration:
         Type: EDGE
