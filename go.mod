@@ -3,9 +3,9 @@ module github.com/go-inventory
 go 1.23.3
 
 require (
-	github.com/eliezerraj/go-core v1.0.97
+	github.com/eliezerraj/go-core v1.0.101
 	github.com/gorilla/mux v1.8.1
-	github.com/jackc/pgx/v5 v5.7.2
+	github.com/jackc/pgx/v5 v5.7.6
 	github.com/joho/godotenv v1.5.1
 	github.com/prometheus/client_golang v1.23.2
 	github.com/rs/zerolog v1.34.0
