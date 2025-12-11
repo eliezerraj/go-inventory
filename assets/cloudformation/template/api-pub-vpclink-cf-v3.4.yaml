@@ -145,9 +145,10 @@ Resources:
                 requestParameters:
                   integration.request.path.proxy: method.request.path.proxy
                   integration.request.header.X-Request-ID: context.requestId
-                  integration.request.header.client-id: context.authorizer.tenant_id
                   integration.request.header.X-Forwarded-For: context.identity.sourceIp
-                  integration.request.header.jwt-id: context.authorizer.jwt_id  
+                  integration.request.header.jwt-id: context.authorizer.jwt_id
+                  integration.request.header.traceparent: context.authorizer.traceparent  
+                  integration.request.header.tracestate: context.authorizer.tracestate     
               security:
               - authorizer: []
             post:
@@ -174,9 +175,10 @@ Resources:
                 requestParameters:
                   integration.request.path.proxy: method.request.path.proxy
                   integration.request.header.X-Request-ID: context.requestId
-                  integration.request.header.client-id: context.authorizer.tenant_id
                   integration.request.header.X-Forwarded-For: context.identity.sourceIp
-                  integration.request.header.jwt-id: context.authorizer.jwt_id   
+                  integration.request.header.jwt-id: context.authorizer.jwt_id
+                  integration.request.header.traceparent: context.authorizer.traceparent  
+                  integration.request.header.tracestate: context.authorizer.tracestate     
               security:
               - authorizer: []
             put:
@@ -203,9 +205,10 @@ Resources:
                 requestParameters:
                   integration.request.path.proxy: method.request.path.proxy
                   integration.request.header.X-Request-ID: context.requestId
-                  integration.request.header.client-id: context.authorizer.tenant_id
                   integration.request.header.X-Forwarded-For: context.identity.sourceIp
-                  integration.request.header.jwt-id: context.authorizer.jwt_id   
+                  integration.request.header.jwt-id: context.authorizer.jwt_id
+                  integration.request.header.traceparent: context.authorizer.traceparent  
+                  integration.request.header.tracestate: context.authorizer.tracestate     
               security:
               - authorizer: []
         x-amazon-apigateway-api-key-source: AUTHORIZER
