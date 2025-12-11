@@ -64,13 +64,13 @@ func (w *WorkerRepository) Stat(ctx context.Context) (go_core_db_pg.PoolStats){
 func (w* WorkerRepository) AddProduct(ctx context.Context, 
 									tx pgx.Tx, 
 									product *model.Product) (*model.Product, error){
-	// trace
-	ctx, span := tracerProvider.SpanCtx(ctx, "database.AddProduct")
-	defer span.End()
-
 	w.logger.Info().
 			Ctx(ctx).
 			Str("func","AddProduct").Send()
+			
+	// trace
+	ctx, span := tracerProvider.SpanCtx(ctx, "database.AddProduct")
+	defer span.End()
 
 	conn, err := w.DatabasePG.Acquire(ctx)
 	if err != nil {
@@ -124,13 +124,13 @@ func (w* WorkerRepository) AddProduct(ctx context.Context,
 // About get a product
 func (w *WorkerRepository) GetProduct(ctx context.Context, 
 									product *model.Product) (*model.Product, error){
-	// Trace
-	ctx, span := tracerProvider.SpanCtx(ctx, "database.GetProduct")
-	defer span.End()
-
 	w.logger.Info().
 			Ctx(ctx).
 			Str("func","GetProduct").Send()
+
+	// Trace
+	ctx, span := tracerProvider.SpanCtx(ctx, "database.GetProduct")
+	defer span.End()
 
 	// db connection
 	conn, err := w.DatabasePG.Acquire(ctx)
@@ -209,13 +209,13 @@ func (w *WorkerRepository) GetProduct(ctx context.Context,
 // About get a product
 func (w *WorkerRepository) GetProductId(ctx context.Context, 
 										product *model.Product) (*model.Product, error){
-	// Trace
-	ctx, span := tracerProvider.SpanCtx(ctx, "database.GetProductId")
-	defer span.End()
-
 	w.logger.Info().
 			Ctx(ctx).
 			Str("func","GetProductId").Send()
+
+	// Trace
+	ctx, span := tracerProvider.SpanCtx(ctx, "database.GetProductId")
+	defer span.End()
 
 	// db connection
 	conn, err := w.DatabasePG.Acquire(ctx)
@@ -348,13 +348,13 @@ func (w* WorkerRepository) AddInventory(ctx context.Context,
 // About get a Inventory
 func (w *WorkerRepository) GetInventory(ctx context.Context, 
 										inventory *model.Inventory) (*model.Inventory, error){
-	// Trace
-	ctx, span := tracerProvider.SpanCtx(ctx, "database.GetInventory")
-	defer span.End()
-
 	w.logger.Info().
 			Ctx(ctx).
 			Str("func","GetInventory").Send()
+			
+	// Trace
+	ctx, span := tracerProvider.SpanCtx(ctx, "database.GetInventory")
+	defer span.End()
 
 	// db connection
 	conn, err := w.DatabasePG.Acquire(ctx)

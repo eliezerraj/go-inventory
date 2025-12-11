@@ -132,14 +132,13 @@ func (s *WorkerService) AddProduct(ctx context.Context,
 
 // About get a product
 func (s * WorkerService) GetProduct(ctx context.Context, product *model.Product) (*model.Product, error){
-	// Trace
-	ctx, span := tracerProvider.SpanCtx(ctx, "service.GetProduct")
-	defer span.End()
-
-	// log with context
 	s.logger.Info().
 			Ctx(ctx).
 			Str("func","GetProduct").Send()
+
+	// Trace
+	ctx, span := tracerProvider.SpanCtx(ctx, "service.GetProduct")
+	defer span.End()
 
 	// Call a service
 	res, err := s.workerRepository.GetProduct(ctx, product)
@@ -152,14 +151,13 @@ func (s * WorkerService) GetProduct(ctx context.Context, product *model.Product)
 
 // About get a product
 func (s * WorkerService) GetProductId(ctx context.Context, product *model.Product) (*model.Product, error){
-	// Trace
-	ctx, span := tracerProvider.SpanCtx(ctx, "service.GetProductId")
-	defer span.End()
-
-	// log with context
 	s.logger.Info().
 			Ctx(ctx).
 			Str("func","GetProductId").Send()
+
+	// Trace
+	ctx, span := tracerProvider.SpanCtx(ctx, "service.GetProductId")
+	defer span.End()
 
 	// Call a service
 	res, err := s.workerRepository.GetProductId(ctx, product)
@@ -172,14 +170,14 @@ func (s * WorkerService) GetProductId(ctx context.Context, product *model.Produc
 
 // About get inventory
 func (s * WorkerService) GetInventory(ctx context.Context, inventory *model.Inventory) (*model.Inventory, error){
-	// Trace
-	ctx, span := tracerProvider.SpanCtx(ctx, "service.GetInventory")
-	defer span.End()
-	
 	s.logger.Info().
 			Ctx(ctx).
 			Str("func","GetInventory").Send()
 
+	// Trace
+	ctx, span := tracerProvider.SpanCtx(ctx, "service.GetInventory")
+	defer span.End()
+	
 	// Call a service
 	res, err := s.workerRepository.GetInventory(ctx, inventory)
 	if err != nil {
