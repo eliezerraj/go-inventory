@@ -152,7 +152,7 @@ func (h *HttpRouters) AddProduct(rw http.ResponseWriter, req *http.Request) erro
 	
 	err := json.NewDecoder(req.Body).Decode(&product)
     if err != nil {
-		trace_id := fmt.Sprintf("%v",ctx.Value("trace-request-id"))
+		trace_id := fmt.Sprintf("%v",ctx.Value("request-id"))
 		return h.ErrorHandler(trace_id, erro.ErrBadRequest)
     }
 	defer req.Body.Close()
@@ -160,7 +160,7 @@ func (h *HttpRouters) AddProduct(rw http.ResponseWriter, req *http.Request) erro
 	// call service
 	res, err := h.workerService.AddProduct(ctx, &product)
 	if err != nil {
-		trace_id := fmt.Sprintf("%v",ctx.Value("trace-request-id"))
+		trace_id := fmt.Sprintf("%v",ctx.Value("request-id"))
 		return h.ErrorHandler(trace_id, err)
 	}
 	
@@ -191,7 +191,7 @@ func (h *HttpRouters) GetProduct(rw http.ResponseWriter, req *http.Request) erro
 	// call service	
 	res, err := h.workerService.GetProduct(ctx, &product)
 	if err != nil {
-		trace_id := fmt.Sprintf("%v",ctx.Value("trace-request-id"))
+		trace_id := fmt.Sprintf("%v",ctx.Value("request-id"))
 		return h.ErrorHandler(trace_id, err)
 	}
 	
@@ -218,7 +218,7 @@ func (h *HttpRouters) GetProductId(rw http.ResponseWriter, req *http.Request) er
 	
 	varIDint, err := strconv.Atoi(varID)
     if err != nil {
-		trace_id := fmt.Sprintf("%v",ctx.Value("trace-request-id"))
+		trace_id := fmt.Sprintf("%v",ctx.Value("request-id"))
 		return h.ErrorHandler(trace_id, erro.ErrBadRequest)
     }
 
@@ -227,7 +227,7 @@ func (h *HttpRouters) GetProductId(rw http.ResponseWriter, req *http.Request) er
 	// call service	
 	res, err := h.workerService.GetProductId(ctx, &product)
 	if err != nil {
-		trace_id := fmt.Sprintf("%v",ctx.Value("trace-request-id"))
+		trace_id := fmt.Sprintf("%v",ctx.Value("request-id"))
 		return h.ErrorHandler(trace_id, err)
 	}
 	
@@ -257,7 +257,7 @@ func (h *HttpRouters) GetInventory(rw http.ResponseWriter, req *http.Request) er
 	// call service	
 	res, err := h.workerService.GetInventory(ctx, &inventory)
 	if err != nil {
-		trace_id := fmt.Sprintf("%v",ctx.Value("trace-request-id"))
+		trace_id := fmt.Sprintf("%v",ctx.Value("request-id"))
 		return h.ErrorHandler(trace_id, err)
 	}
 	
@@ -282,7 +282,7 @@ func (h *HttpRouters) UpdateInventory(rw http.ResponseWriter, req *http.Request)
 	inventory := model.Inventory{}
 	err := json.NewDecoder(req.Body).Decode(&inventory)
     if err != nil {
-		trace_id := fmt.Sprintf("%v",ctx.Value("trace-request-id"))
+		trace_id := fmt.Sprintf("%v",ctx.Value("request-id"))
 		return h.ErrorHandler(trace_id, erro.ErrBadRequest)
     }
 	defer req.Body.Close()
@@ -296,7 +296,7 @@ func (h *HttpRouters) UpdateInventory(rw http.ResponseWriter, req *http.Request)
 	// call service	
 	res, err := h.workerService.UpdateInventory(ctx, &inventory)
 	if err != nil {
-		trace_id := fmt.Sprintf("%v",ctx.Value("trace-request-id"))
+		trace_id := fmt.Sprintf("%v",ctx.Value("request-id"))
 		return h.ErrorHandler(trace_id, err)
 	}
 	
