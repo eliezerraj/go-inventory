@@ -4,6 +4,16 @@
 
    The main purpose is create 2 entities, Product and its Inventory.
 
+   To local test you should use the work space:
+   
+   Create a work space (root)
+   
+   go work init ./cmd ../go-core
+
+   Add module (inside /cmd)
+   
+   go work use ..
+
 ## Enviroment variables
 
 To run in local machine for local tests creat a .env in /cmd folder
