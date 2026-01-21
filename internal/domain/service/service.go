@@ -213,7 +213,6 @@ func (s * WorkerService) UpdateInventory(ctx context.Context, inventory *model.I
 	}()
 
 	// Get product info
-	// Call a service
 	resInventory, err := s.workerRepository.GetInventory(ctx, inventory)
 	if err != nil {
 		return nil, err
@@ -238,5 +237,11 @@ func (s * WorkerService) UpdateInventory(ctx context.Context, inventory *model.I
 			return nil, err
 		}
 	}
+
+	resInventory.Available = inventory.Available + resInventory.Available
+	resInventory.Reserved = inventory.Reserved + resInventory.Reserved
+	resInventory.Sold = inventory.Sold + resInventory.Sold
+	resInventory.UpdatedAt = inventory.UpdatedAt	
+	
 	return resInventory, nil
 }

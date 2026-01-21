@@ -319,15 +319,17 @@ func (w* WorkerRepository) AddInventory(ctx context.Context,
 	// Query Execute
 	query := `INSERT INTO inventory ( 	fk_product_id,
 										available,
+										pending,
 										reserved,
 										sold,
 										created_at) 
-				VALUES($1, $2, $3, $4, $5) RETURNING id`
+				VALUES($1, $2, $3, $4, $5, $6) RETURNING id`
 
 	row := tx.QueryRow(	ctx, 
 						query,
 						inventory.Product.ID,
 						inventory.Available, 
+						inventory.Pending,
 						inventory.Reserved,
 						inventory.Sold,
 						inventory.CreatedAt)
@@ -382,6 +384,7 @@ func (w *WorkerRepository) GetInventory(ctx context.Context,
 					 p.updated_at,
 					 i.id,
 					 i.available,
+					 i.pending,
 					 i.reserved,
 					 i.sold,
 					 i.created_at,
@@ -419,6 +422,7 @@ func (w *WorkerRepository) GetInventory(ctx context.Context,
 							&nullProductUpdatedAt,
 							&res_inventory.ID, 
 							&res_inventory.Available, 
+							&res_inventory.Pending,
 							&res_inventory.Reserved, 
 							&res_inventory.Sold,
 							&res_inventory.CreatedAt,
@@ -477,8 +481,9 @@ func (w* WorkerRepository) UpdateInventory(ctx context.Context,
 	// Query Execute
 	query := `UPDATE inventory
 				SET available = available + $3,
-					reserved = reserved + $4,
-					sold = sold + $5,
+					pending = pending + $4,
+					reserved = reserved + $5,
+					sold = sold + $6,
 					updated_at = $2
 				WHERE id = (SELECT id 
 							FROM inventory
@@ -492,6 +497,7 @@ func (w* WorkerRepository) UpdateInventory(ctx context.Context,
 						inventory.Product.ID,
 						inventory.UpdatedAt,		
 						inventory.Available,
+						inventory.Pending,
 						inventory.Reserved,
 						inventory.Sold,
 					)

@@ -54,6 +54,7 @@ type Inventory struct {
 	ID				int		`json:"id,omitempty"`
 	Product 		Product	 `json:"product"`
 	Available		int		`json:"available,omitempty"`
+	Pending			int		`json:"pending,omitempty"`
 	Reserved		int		`json:"reserved,omitempty"`
 	Sold			int		`json:"sold,omitempty"` 	
 	CreatedAt		time.Time 	`json:"created_at,omitempty"`

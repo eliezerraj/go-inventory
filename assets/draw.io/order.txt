@@ -1,0 +1,17 @@
+    title get order
+
+    participant user
+    participant order
+    participant cart
+    participant clearance
+    
+entryspacing 0.7
+    user->order:GET /order/{id}
+    order->cart:GET/cart/{id}
+    order<--cart:http 200 (JSON)\nqueryData
+    postData
+    queryData
+space
+    order->clearance:GET /payment/order/{id}
+    order<--clearance:http 200 (JSON)\nqueryData
+    user<--order:http 200 (JSON)\nqueryData

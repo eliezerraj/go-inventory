@@ -1,4 +1,4 @@
-## go-inventory
+## Go-inventory
 
    This is workload for POC purpose such as load stress test, gitaction, etc.
 
@@ -8,11 +8,51 @@
    
    Create a work space (root)
    
-   go work init ./cmd ../go-core
+    go work init ./cmd ../go-core
 
    Add module (inside /cmd)
    
-   go work use ..
+    go work use ..
+
+## Sequence Diagram
+
+![alt text](inventory.png)
+
+![alt text](inventory_2.png)    
+    
+    title inventory
+
+    participant user
+    participant inventory
+
+    entryspacing 1.1
+    alt addProduct
+        user->inventory:POST /product
+        postData
+    inventory->inventory:create\nproduct
+    inventory->inventory:create\ninventory
+        user<--inventory:http 200 (JSON)\npostData
+        queryData
+    end
+    alt getProduct
+    user->inventory:GET /product/{id}
+    user<--inventory:http 200 (JSON)\nqueryData
+    end
+    alt GetProductId
+    user->inventory:GET /productId/{id}
+    user<--inventory:http 200 (JSON)\nqueryData
+    end
+
+    alt GetInventory
+    user->inventory:GET /inventory/product/{id}
+    user<--inventory:http 200 (JSON)\nqueryData
+    end
+    alt UpdateInventory
+    user->inventory:PUT /inventory/product/{id}
+    inventory->inventory:get\nInventory
+    inventory->inventory:update\nInventory
+    user<--inventory:http 200 (JSON)\nputData
+    end
 
 ## Enviroment variables
 
@@ -44,14 +84,25 @@ To run in local machine for local tests creat a .env in /cmd folder
 
 ## Endpoints
 
-    curl --location 'http://localhost:7000/health'
-    curl --location 'http://localhost:7000/info'
-    curl --location 'http://localhost:7000/metrics'
-    curl --location 'http://localhost:7000/product/soda-01'
-    curl --location 'http://localhost:7000/productId/4'
-    curl --location 'http://localhost:7000/inventory/product/soda-01'
+curl --location 'http://localhost:7000/health'
 
-    curl --location 'http://localhost:7000/product' \
+curl --location 'http://localhost:7000/live'
+
+curl --location 'http://localhost:7000/header'
+
+curl --location 'http://localhost:7000/context'
+
+curl --location 'http://localhost:7000/info'
+
+curl --location 'http://localhost:7000/metrics'
+
+curl --location 'http://localhost:7000/product/soda-01'
+
+curl --location 'http://localhost:7000/productId/4'
+
+curl --location 'http://localhost:7000/inventory/product/soda-01'
+
+curl --location 'http://localhost:7000/product' \
     --header 'Content-Type: application/json' \
     --data '{
         "sku": "mobile-101",
@@ -60,13 +111,28 @@ To run in local machine for local tests creat a .env in /cmd folder
         "status": "IN-STOCK"
     }'
 
-    curl --location --request PUT 'http://localhost:7000/inventory/product/floss-01' \
+curl --location --request PUT 'http://localhost:7000/inventory/product/floss-01' \
     --header 'Content-Type: application/json' \
     --data '{
         "available": 0,
+        "pending": 0,
         "reserved": 1,
         "sold": 1
     }'
+
+## Monitoring
+
+Logs: JSON structured logging via zerolog
+
+Metrics: Available through endpoint /metrics via otel/sdk/metric
+
+Trace: The x-request-id is extract from header and is ingest into context, in order the x-request-id do not exist a new one is generated (uuid)
+
+Errors: Structured error handling with custom error types
+
+## Security
+
+Security Headers: Is implement via go-core midleware
 
 ## Tables
 
@@ -87,6 +153,7 @@ To run in local machine for local tests creat a .env in /cmd folder
         id 				BIGSERIAL	NOT NULL,
         fk_product_id	BIGSERIAL	NOT NULL,
         available		INT 		NOT null DEFAULT 0,
+        pending 	 	INT 		NOT NULL DEFAULT 0,
         reserved	 	INT 		NOT NULL DEFAULT 0,
         sold		 	INT 		NOT null DEFAULT 0,
         created_at 		timestamptz 	NOT NULL,
