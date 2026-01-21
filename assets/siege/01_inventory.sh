@@ -3,6 +3,7 @@
 # variabels
 
 export AUTH_TOKEN=
+
 export URL_HOST=https://go-api-global.architecture.caradhras.io/inventory
 
 #-----------------------------------------------------
