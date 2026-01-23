@@ -2,30 +2,32 @@ package database
 
 import (
 		"context"
-		"errors"
+		"fmt"
 		"strings"
 		"database/sql"
+		"time"
 
 		"github.com/rs/zerolog"
 		"github.com/jackc/pgx/v5"
 
 		"github.com/go-inventory/shared/erro"
 		"github.com/go-inventory/internal/domain/model"
+		"go.opentelemetry.io/otel/trace"
 
 		go_core_otel_trace "github.com/eliezerraj/go-core/v2/otel/trace"
 		go_core_db_pg "github.com/eliezerraj/go-core/v2/database/postgre"
 )
 
-var tracerProvider go_core_otel_trace.TracerProvider
-
 type WorkerRepository struct {
-	DatabasePG *go_core_db_pg.DatabasePGServer
-	logger		*zerolog.Logger
+	DatabasePG 		*go_core_db_pg.DatabasePGServer
+	logger			*zerolog.Logger
+	tracerProvider 	*go_core_otel_trace.TracerProvider
 }
 
 // Above new worker
 func NewWorkerRepository(databasePG *go_core_db_pg.DatabasePGServer,
-						appLogger *zerolog.Logger) *WorkerRepository{
+						appLogger *zerolog.Logger,
+						tracerProvider *go_core_otel_trace.TracerProvider) *WorkerRepository{
 	logger := appLogger.With().
 						Str("package", "repo.database").
 						Logger()
@@ -35,7 +37,37 @@ func NewWorkerRepository(databasePG *go_core_db_pg.DatabasePGServer,
 	return &WorkerRepository{
 		DatabasePG: databasePG,
 		logger: &logger,
+		tracerProvider: tracerProvider,
 	}
+}
+
+// Helper function to convert nullable time to pointer
+func (w *WorkerRepository) pointerTime(nt sql.NullTime) *time.Time {
+	if nt.Valid {
+		return &nt.Time
+	}
+	return nil
+}
+
+// Helper function to scan product from rows iterator
+func (w *WorkerRepository) scanProductFromRows(rows pgx.Rows) (*model.Product, error) {
+	product := model.Product{}
+	var nullUpdatedAt sql.NullTime
+	
+	err := rows.Scan(&product.ID, 
+					&product.Sku, 
+					&product.Type,
+					&product.Name,
+					&product.Status,
+					&product.CreatedAt,
+					&nullUpdatedAt,
+				)
+	if err != nil {
+		return nil, fmt.Errorf("failed to scan product from rows: %w", err)
+	}
+	
+	product.UpdatedAt = w.pointerTime(nullUpdatedAt)
+	return &product, nil
 }
 
 // Above get stats from database
@@ -69,17 +101,8 @@ func (w* WorkerRepository) AddProduct(ctx context.Context,
 			Str("func","AddProduct").Send()
 			
 	// trace
-	ctx, span := tracerProvider.SpanCtx(ctx, "database.AddProduct")
+	ctx, span := w.tracerProvider.SpanCtx(ctx, "database.AddProduct", trace.SpanKindInternal)
 	defer span.End()
-
-	conn, err := w.DatabasePG.Acquire(ctx)
-	if err != nil {
-		w.logger.Error().
-				Ctx(ctx).
-				Err(err).Send()
-		return nil, errors.New(err.Error())
-	}
-	defer w.DatabasePG.Release(conn)
 
 	//Prepare
 	var id int
@@ -112,7 +135,7 @@ func (w* WorkerRepository) AddProduct(ctx context.Context,
 				     Err(err).Send()
 		}
 
-		return nil, errors.New(err.Error())
+		return nil, fmt.Errorf("failed to insert product: %w", err)
 	}
 
 	// Set PK
@@ -123,13 +146,13 @@ func (w* WorkerRepository) AddProduct(ctx context.Context,
 
 // About get a product
 func (w *WorkerRepository) GetProduct(ctx context.Context, 
-									product *model.Product) (*model.Product, error){
+									  product *model.Product) (*model.Product, error){
 	w.logger.Info().
 			Ctx(ctx).
 			Str("func","GetProduct").Send()
 
 	// Trace
-	ctx, span := tracerProvider.SpanCtx(ctx, "database.GetProduct")
+	ctx, span := w.tracerProvider.SpanCtx(ctx, "database.GetProduct", trace.SpanKindInternal)
 	defer span.End()
 
 	// db connection
@@ -138,13 +161,9 @@ func (w *WorkerRepository) GetProduct(ctx context.Context,
 		w.logger.Error().
 			  	 Ctx(ctx).
 				 Err(err).Send()
-		return nil, errors.New(err.Error())
+		return nil, fmt.Errorf("failed to acquire connection: %w", err)
 	}
 	defer w.DatabasePG.Release(conn)
-
-	// Prepare
-	res_product := model.Product{}
-	var nullUpdatedAt sql.NullTime
 
 	// Query and Execute
 	query := `SELECT id, 
@@ -164,39 +183,19 @@ func (w *WorkerRepository) GetProduct(ctx context.Context,
 		w.logger.Error().
 				Ctx(ctx).
 				Err(err).Send()
-		return nil, errors.New(err.Error())
+		return nil, fmt.Errorf("failed to query product: %w", err)
 	}
 	defer rows.Close()
 
-    if err := rows.Err(); err != nil {
-		w.logger.Error().
-				Ctx(ctx).
-				Err(err).Msg("fatal error closing rows")
-        return nil, errors.New(err.Error())
-    }
-
-	for rows.Next() {
-		err := rows.Scan(	&res_product.ID, 
-							&res_product.Sku, 
-							&res_product.Type,
-							&res_product.Name,
-							&res_product.Status,
-							&res_product.CreatedAt,
-							&nullUpdatedAt,
-						)
+	if rows.Next() {
+		res_product, err := w.scanProductFromRows(rows)
 		if err != nil {
 			w.logger.Error().
 					Ctx(ctx).
 					Err(err).Send()
-			return nil, errors.New(err.Error())
-        }
-
-		if nullUpdatedAt.Valid {
-        	res_product.UpdatedAt = &nullUpdatedAt.Time
-    	} else {
-			res_product.UpdatedAt = nil
+			return nil, err
 		}
-		return &res_product, nil
+		return res_product, nil
 	}
 
 	w.logger.Warn().
@@ -206,7 +205,7 @@ func (w *WorkerRepository) GetProduct(ctx context.Context,
 	return nil, erro.ErrNotFound
 }
 
-// About get a product
+// About get a product by ID
 func (w *WorkerRepository) GetProductId(ctx context.Context, 
 										product *model.Product) (*model.Product, error){
 	w.logger.Info().
@@ -214,7 +213,7 @@ func (w *WorkerRepository) GetProductId(ctx context.Context,
 			Str("func","GetProductId").Send()
 
 	// Trace
-	ctx, span := tracerProvider.SpanCtx(ctx, "database.GetProductId")
+	ctx, span := w.tracerProvider.SpanCtx(ctx, "database.GetProductId", trace.SpanKindInternal)
 	defer span.End()
 
 	// db connection
@@ -223,13 +222,9 @@ func (w *WorkerRepository) GetProductId(ctx context.Context,
 		w.logger.Error().
 				Ctx(ctx).
 				Err(err).Send()
-		return nil, errors.New(err.Error())
+		return nil, fmt.Errorf("failed to acquire connection: %w", err)
 	}
 	defer w.DatabasePG.Release(conn)
-
-	// Prepare
-	res_product := model.Product{}
-	var nullUpdatedAt sql.NullTime
 
 	// Query and Execute
 	query := `SELECT id, 
@@ -249,39 +244,19 @@ func (w *WorkerRepository) GetProductId(ctx context.Context,
 		w.logger.Error().
 				Ctx(ctx).
 				Err(err).Send()
-		return nil, errors.New(err.Error())
+		return nil, fmt.Errorf("failed to query product by id: %w", err)
 	}
 	defer rows.Close()
 
-    if err := rows.Err(); err != nil {
-		w.logger.Error().
-				Ctx(ctx).
-				Err(err).Msg("fatal error closing rows")
-        return nil, errors.New(err.Error())
-    }
-
-	for rows.Next() {
-		err := rows.Scan(	&res_product.ID, 
-							&res_product.Sku, 
-							&res_product.Type,
-							&res_product.Name,
-							&res_product.Status,
-							&res_product.CreatedAt,
-							&nullUpdatedAt,
-						)
+	if rows.Next() {
+		res_product, err := w.scanProductFromRows(rows)
 		if err != nil {
 			w.logger.Error().
 					Ctx(ctx).
 					Err(err).Send()
-			return nil, errors.New(err.Error())
-        }
-
-		if nullUpdatedAt.Valid {
-        	res_product.UpdatedAt = &nullUpdatedAt.Time
-    	} else {
-			res_product.UpdatedAt = nil
+			return nil, err
 		}
-		return &res_product, nil
+		return res_product, nil
 	}
 
 	w.logger.Warn().
@@ -301,17 +276,8 @@ func (w* WorkerRepository) AddInventory(ctx context.Context,
 			Str("func","AddInventory").Send()
 
 	// trace
-	ctx, span := tracerProvider.SpanCtx(ctx, "database.AddInventory")
+	ctx, span := w.tracerProvider.SpanCtx(ctx, "database.AddInventory", trace.SpanKindInternal)
 	defer span.End()
-
-	conn, err := w.DatabasePG.Acquire(ctx)
-	if err != nil {
-		w.logger.Error().
-				Ctx(ctx).
-				Err(err).Send()
-		return nil, errors.New(err.Error())
-	}
-	defer w.DatabasePG.Release(conn)
 
 	//Prepare
 	var id int
@@ -338,7 +304,7 @@ func (w* WorkerRepository) AddInventory(ctx context.Context,
 		w.logger.Error().
 				Ctx(ctx).
 				Err(err).Send()
-		return nil, errors.New(err.Error())
+		return nil, fmt.Errorf("failed to insert inventory: %w", err)
 	}
 
 	// Set PK
@@ -355,7 +321,7 @@ func (w *WorkerRepository) GetInventory(ctx context.Context,
 			Str("func","GetInventory").Send()
 			
 	// Trace
-	ctx, span := tracerProvider.SpanCtx(ctx, "database.GetInventory")
+	ctx, span := w.tracerProvider.SpanCtx(ctx, "database.GetInventory", trace.SpanKindInternal)
 	defer span.End()
 
 	// db connection
@@ -364,7 +330,7 @@ func (w *WorkerRepository) GetInventory(ctx context.Context,
 		w.logger.Error().
 				Ctx(ctx).
 				Err(err).Send()
-		return nil, errors.New(err.Error())
+		return nil, fmt.Errorf("failed to acquire connection: %w", err)
 	}
 	defer w.DatabasePG.Release(conn)
 
@@ -401,50 +367,35 @@ func (w *WorkerRepository) GetInventory(ctx context.Context,
 		w.logger.Error().
 				Ctx(ctx).
 				Err(err).Send()
-		return nil, errors.New(err.Error())
+		return nil, fmt.Errorf("failed to query inventory: %w", err)
 	}
 	defer rows.Close()
 
-    if err := rows.Err(); err != nil {
-		w.logger.Error().
-				Ctx(ctx).
-				Err(err).Msg("fatal error closing rows")
-        return nil, errors.New(err.Error())
-    }
-
-	for rows.Next() {
-		err := rows.Scan(	&res_product.ID, 
-							&res_product.Sku, 
-							&res_product.Type,
-							&res_product.Name,
-							&res_product.Status,
-							&res_product.CreatedAt,
-							&nullProductUpdatedAt,
-							&res_inventory.ID, 
-							&res_inventory.Available, 
-							&res_inventory.Pending,
-							&res_inventory.Reserved, 
-							&res_inventory.Sold,
-							&res_inventory.CreatedAt,
-							&nullInventoryUpdatedAt,
-						)
+	if rows.Next() {
+		err := rows.Scan(&res_product.ID, 
+						&res_product.Sku, 
+						&res_product.Type,
+						&res_product.Name,
+						&res_product.Status,
+						&res_product.CreatedAt,
+						&nullProductUpdatedAt,
+						&res_inventory.ID, 
+						&res_inventory.Available, 
+						&res_inventory.Pending,
+						&res_inventory.Reserved, 
+						&res_inventory.Sold,
+						&res_inventory.CreatedAt,
+						&nullInventoryUpdatedAt,
+					)
 		if err != nil {
 			w.logger.Error().
 					Ctx(ctx).
 					Err(err).Send()
-			return nil, errors.New(err.Error())
-        }
+			return nil, fmt.Errorf("failed to scan inventory row: %w", err)
+		}
 
-		if nullProductUpdatedAt.Valid {
-        	res_product.UpdatedAt = &nullProductUpdatedAt.Time
-    	} else {
-			res_product.UpdatedAt = nil
-		}
-		if nullInventoryUpdatedAt.Valid {
-        	res_inventory.UpdatedAt = &nullInventoryUpdatedAt.Time
-    	} else {
-			res_inventory.UpdatedAt = nil
-		}
+		res_product.UpdatedAt = w.pointerTime(nullProductUpdatedAt)
+		res_inventory.UpdatedAt = w.pointerTime(nullInventoryUpdatedAt)
 		res_inventory.Product = res_product
 		return &res_inventory, nil
 	}
@@ -466,17 +417,8 @@ func (w* WorkerRepository) UpdateInventory(ctx context.Context,
 			Str("func","UpdateInventory").Send()
 
 	// trace
-	ctx, span := tracerProvider.SpanCtx(ctx, "database.UpdateInventory(skip_row)")
+	ctx, span := w.tracerProvider.SpanCtx(ctx, "database.UpdateInventory", trace.SpanKindInternal)
 	defer span.End()
-
-	conn, err := w.DatabasePG.Acquire(ctx)
-	if err != nil {
-		w.logger.Error().
-				Ctx(ctx).
-				Err(err).Send()
-		return 0, errors.New(err.Error())
-	}
-	defer w.DatabasePG.Release(conn)
 
 	// Query Execute
 	query := `UPDATE inventory
@@ -506,7 +448,7 @@ func (w* WorkerRepository) UpdateInventory(ctx context.Context,
 				Ctx(ctx).
 				Str("func","UpdateInventory").
 				Err(err).Send()
-		return 0, errors.New(err.Error())
+		return 0, fmt.Errorf("failed to update inventory: %w", err)
 	}
 
 	return row.RowsAffected(), nil

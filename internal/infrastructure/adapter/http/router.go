@@ -1,10 +1,8 @@
 package http
 
 import (
-	"fmt"
 	"time"
 	"strconv"
-	"reflect"
 	"net/http"
 	"context"
 	"strings"
@@ -16,34 +14,47 @@ import (
 	"github.com/go-inventory/shared/erro"
 	"github.com/go-inventory/internal/domain/model"
 	"github.com/go-inventory/internal/domain/service"
-	
+	"go.opentelemetry.io/otel/trace"
+
 	go_core_midleware "github.com/eliezerraj/go-core/v2/middleware"
 	go_core_otel_trace "github.com/eliezerraj/go-core/v2/otel/trace"
 )
 
+// Global middleware reference for error handling
 var (
-	coreMiddleWareApiError	go_core_midleware.APIError
-	coreMiddleWareWriteJSON	go_core_midleware.MiddleWare
-
-	tracerProvider go_core_otel_trace.TracerProvider
+	_ go_core_midleware.MiddleWare
 )
 
 type HttpRouters struct {
 	workerService 	*service.WorkerService
 	appServer		*model.AppServer
 	logger			*zerolog.Logger
+	tracerProvider 	*go_core_otel_trace.TracerProvider
 }
 
-// Type for async result
-type result struct {
-		data interface{}
-		err  error
+// Helper to extract context with timeout and setup span
+func (h *HttpRouters) withContext(req *http.Request, spanName string) (context.Context, context.CancelFunc, trace.Span) {
+	ctx, cancel := context.WithTimeout(req.Context(), 
+		time.Duration(h.appServer.Server.CtxTimeout) * time.Second)
+	
+	h.logger.Info().
+			Ctx(ctx).
+			Str("func", spanName).Send()
+	
+	ctx, span := h.tracerProvider.SpanCtx(ctx, "adapter."+spanName, trace.SpanKindInternal)
+	return ctx, cancel, span
+}
+
+// Helper to get trace ID from context using middleware function
+func (h *HttpRouters) getTraceID(ctx context.Context) string {
+	return go_core_midleware.GetRequestID(ctx)
 }
 
 // Above create routers
 func NewHttpRouters(appServer *model.AppServer,
 					workerService *service.WorkerService,
-					appLogger *zerolog.Logger) HttpRouters {
+					appLogger *zerolog.Logger,
+					tracerProvider *go_core_otel_trace.TracerProvider) HttpRouters {
 	logger := appLogger.With().
 						Str("package", "adapter.http").
 						Logger()
@@ -55,45 +66,55 @@ func NewHttpRouters(appServer *model.AppServer,
 		workerService: workerService,
 		appServer: appServer,
 		logger: &logger,
+		tracerProvider: tracerProvider,
 	}
 }
 
-// About handle error
-func (h *HttpRouters) ErrorHandler(trace_id string, err error) *go_core_midleware.APIError {
+// Helper to write JSON response
+func (h *HttpRouters) writeJSON(w http.ResponseWriter, code int, data interface{}) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(code)
+	
+	return json.NewEncoder(w).Encode(data)
+}
 
+// ErrorHandler creates an APIError with appropriate HTTP status based on error type
+func (h *HttpRouters) ErrorHandler(traceID string, err error) *go_core_midleware.APIError {
 	var httpStatusCode int = http.StatusInternalServerError
 
 	if strings.Contains(err.Error(), "context deadline exceeded") {
-    	httpStatusCode = http.StatusGatewayTimeout
+		httpStatusCode = http.StatusGatewayTimeout
 	}
 
 	if strings.Contains(err.Error(), "check parameters") {
-    	httpStatusCode = http.StatusBadRequest
+		httpStatusCode = http.StatusBadRequest
 	}
 
 	if strings.Contains(err.Error(), "not found") {
-    	httpStatusCode = http.StatusNotFound
+		httpStatusCode = http.StatusNotFound
 	}
 
 	if strings.Contains(err.Error(), "duplicate key") || 
 	   strings.Contains(err.Error(), "unique constraint") {
-   		httpStatusCode = http.StatusBadRequest
+		httpStatusCode = http.StatusBadRequest
 	}
 
-	coreMiddleWareApiError = coreMiddleWareApiError.NewAPIError(err, 
-																trace_id, 
-																httpStatusCode)
-
-	return &coreMiddleWareApiError
+	return go_core_midleware.NewAPIError(err, traceID, httpStatusCode)
 }
 
 // About return a health, without log and trace to avoid flush then in K8 
 func (h *HttpRouters) Health(rw http.ResponseWriter, req *http.Request) {
+	rw.Header().Set("Content-Type", "application/json")
+	rw.WriteHeader(http.StatusOK)
+
 	json.NewEncoder(rw).Encode(model.MessageRouter{Message: "true"})
 }
 
 // About return a live, without log and trace to avoid flush then in K8 
 func (h *HttpRouters) Live(rw http.ResponseWriter, req *http.Request) {
+	rw.Header().Set("Content-Type", "application/json")
+	rw.WriteHeader(http.StatusOK)
+
 	json.NewEncoder(rw).Encode(model.MessageRouter{Message: "true"})
 }
 
@@ -110,24 +131,16 @@ func (h *HttpRouters) Context(rw http.ResponseWriter, req *http.Request) {
 	h.logger.Info().
 			Str("func","Context").Send()
 	
-	contextValues := reflect.ValueOf(req.Context()).Elem()
-
-	json.NewEncoder(rw).Encode(fmt.Sprintf("%v",contextValues))
+	json.NewEncoder(rw).Encode(req.Context())
 }
 
 // About info
 func (h *HttpRouters) Info(rw http.ResponseWriter, req *http.Request) {
-	// extract context		
-	ctx, cancel := context.WithTimeout(req.Context(), 
-										time.Duration(h.appServer.Server.CtxTimeout) * time.Second)
-    defer cancel()
-	
-	h.logger.Info().
-			Ctx(ctx).
-			Str("func","Info").Send()
+	rw.Header().Set("Content-Type", "application/json")
+	rw.WriteHeader(http.StatusOK)
 
-	// trace and log	
-	ctx, span := tracerProvider.SpanCtx(ctx, "adapter.http.Info")
+	_, cancel, span := h.withContext(req, "Info")
+	defer cancel()
 	defer span.End()
 
 	json.NewEncoder(rw).Encode(h.appServer)
@@ -135,81 +148,61 @@ func (h *HttpRouters) Info(rw http.ResponseWriter, req *http.Request) {
 
 // About add product
 func (h *HttpRouters) AddProduct(rw http.ResponseWriter, req *http.Request) error {
-	// extract context	
-	ctx, cancel := context.WithTimeout(req.Context(), time.Duration(h.appServer.Server.CtxTimeout) * time.Second)
-    defer cancel()
-	
-	h.logger.Info().
-			Ctx(ctx).
-			Str("func","AddProduct").Send()
-
-	// trace and log	
-	ctx, span := tracerProvider.SpanCtx(ctx, "adapter.http.AddProduct")
+	ctx, cancel, span := h.withContext(req, "AddProduct")
+	defer cancel()
 	defer span.End()
 	
 	// decode payload		
 	product := model.Product{}
+	defer req.Body.Close()
 	
 	err := json.NewDecoder(req.Body).Decode(&product)
-    if err != nil {
-		trace_id := fmt.Sprintf("%v",ctx.Value("request-id"))
-		return h.ErrorHandler(trace_id, erro.ErrBadRequest)
-    }
-	defer req.Body.Close()
+	if err != nil {
+		return h.ErrorHandler(h.getTraceID(ctx), erro.ErrBadRequest)
+	}
 
 	// call service
 	res, err := h.workerService.AddProduct(ctx, &product)
 	if err != nil {
-		trace_id := fmt.Sprintf("%v",ctx.Value("request-id"))
-		return h.ErrorHandler(trace_id, err)
+		return h.ErrorHandler(h.getTraceID(ctx), err)
 	}
 	
-	return coreMiddleWareWriteJSON.WriteJSON(rw, http.StatusOK, res)
+	return h.writeJSON(rw, http.StatusOK, res)
 }
 
 // About get product
 func (h *HttpRouters) GetProduct(rw http.ResponseWriter, req *http.Request) error {
-	// extract context		
-	ctx, cancel := context.WithTimeout(req.Context(), 
-									   time.Duration(h.appServer.Server.CtxTimeout) * time.Second)
-    defer cancel()
-
-	h.logger.Info().
-			Ctx(ctx).
-			Str("func","GetProduct").Send()
-
-	// trace and log	
-	ctx, span := tracerProvider.SpanCtx(ctx, "adapter.http.GetProduct")
+	ctx, cancel, span := h.withContext(req, "GetProduct")
+	defer cancel()
 	defer span.End()
 
+    // Debug: Check if request ID is in context
+    //requestID := go_core_midleware.GetRequestID(ctx)
+    //if requestID == "" {
+    //    h.logger.Warn().Msg("Request ID is empty in context")
+    //    // Call debug helper to investigate
+    //    go_core_midleware.DebugContextValues(ctx, h.logger)
+    //}
+
+	  // For demonstration; remove in production
 	// decode payload				
 	vars := mux.Vars(req)
 	varID := vars["id"]
-
 	product := model.Product{Sku: varID}
 	
 	// call service	
 	res, err := h.workerService.GetProduct(ctx, &product)
 	if err != nil {
-		trace_id := fmt.Sprintf("%v",ctx.Value("request-id"))
-		return h.ErrorHandler(trace_id, err)
+		return h.ErrorHandler(h.getTraceID(ctx), err)
 	}
 	
-	return coreMiddleWareWriteJSON.WriteJSON(rw, http.StatusOK, res)
+	return h.writeJSON(rw, http.StatusOK, res)
 }
 
-// About get product
+// About get product by ID
 func (h *HttpRouters) GetProductId(rw http.ResponseWriter, req *http.Request) error {
-	// extract context		
-	ctx, cancel := context.WithTimeout(req.Context(), time.Duration(h.appServer.Server.CtxTimeout) * time.Second)
-    defer cancel()
-
-	h.logger.Info().
-			Ctx(ctx).
-			Str("func","GetProductId").Send()
-
-	// trace and log	
-	ctx, span := tracerProvider.SpanCtx(ctx, "adapter.http.GetProductId")
+	ctx, cancel, span := h.withContext(req, "GetProductId")
+	defer cancel()
 	defer span.End()
 
 	// decode payload				
@@ -217,88 +210,66 @@ func (h *HttpRouters) GetProductId(rw http.ResponseWriter, req *http.Request) er
 	varID := vars["id"]
 	
 	varIDint, err := strconv.Atoi(varID)
-    if err != nil {
-		trace_id := fmt.Sprintf("%v",ctx.Value("request-id"))
-		return h.ErrorHandler(trace_id, erro.ErrBadRequest)
-    }
+	if err != nil {
+		return h.ErrorHandler(h.getTraceID(ctx), erro.ErrBadRequest)
+	}
 
 	product := model.Product{ID: varIDint}
 	
 	// call service	
 	res, err := h.workerService.GetProductId(ctx, &product)
 	if err != nil {
-		trace_id := fmt.Sprintf("%v",ctx.Value("request-id"))
-		return h.ErrorHandler(trace_id, err)
+		return h.ErrorHandler(h.getTraceID(ctx), err)
 	}
 	
-	return coreMiddleWareWriteJSON.WriteJSON(rw, http.StatusOK, res)
+	return h.writeJSON(rw, http.StatusOK, res)
 }
 
 // About get inventory
 func (h *HttpRouters) GetInventory(rw http.ResponseWriter, req *http.Request) error {			
-	// extract context		
-	ctx, cancel := context.WithTimeout(req.Context(), time.Duration(h.appServer.Server.CtxTimeout) * time.Second)
-    defer cancel()
-
-	h.logger.Info().
-			Ctx(ctx).
-			Str("func","GetInventory").Send()
-
-	// trace and log	
-	ctx, span := tracerProvider.SpanCtx(ctx, "adapter.http.GetInventory")
+	ctx, cancel, span := h.withContext(req, "GetInventory")
+	defer cancel()
 	defer span.End()
 
 	// decode payload	
 	vars := mux.Vars(req)
 	varID := vars["id"]
-
-	inventory := model.Inventory{Product: model.Product{Sku: varID},}
+	inventory := model.Inventory{Product: model.Product{Sku: varID}}
 
 	// call service	
 	res, err := h.workerService.GetInventory(ctx, &inventory)
 	if err != nil {
-		trace_id := fmt.Sprintf("%v",ctx.Value("request-id"))
-		return h.ErrorHandler(trace_id, err)
+		return h.ErrorHandler(h.getTraceID(ctx), err)
 	}
 	
-	return coreMiddleWareWriteJSON.WriteJSON(rw, http.StatusOK, res)
+	return h.writeJSON(rw, http.StatusOK, res)
 }
 
 // About update inventory
 func (h *HttpRouters) UpdateInventory(rw http.ResponseWriter, req *http.Request) error {
-	// extract context		
-	ctx, cancel := context.WithTimeout(req.Context(), time.Duration(h.appServer.Server.CtxTimeout) * time.Second)
-    defer cancel()
-
-	h.logger.Info().
-			Ctx(ctx).
-			Str("func","UpdateInventory").Send()
-
-	// trace and log	
-	ctx, span := tracerProvider.SpanCtx(ctx, "adapter.http.UpdateInventory")
+	ctx, cancel, span := h.withContext(req, "UpdateInventory")
+	defer cancel()
 	defer span.End()
 
 	// decode payload	
 	inventory := model.Inventory{}
-	err := json.NewDecoder(req.Body).Decode(&inventory)
-    if err != nil {
-		trace_id := fmt.Sprintf("%v",ctx.Value("request-id"))
-		return h.ErrorHandler(trace_id, erro.ErrBadRequest)
-    }
 	defer req.Body.Close()
+	
+	err := json.NewDecoder(req.Body).Decode(&inventory)
+	if err != nil {
+		return h.ErrorHandler(h.getTraceID(ctx), erro.ErrBadRequest)
+	}
 
 	// get put parameter		
 	vars := mux.Vars(req)
 	varSku := vars["id"]
-
 	inventory.Product.Sku = varSku
 
 	// call service	
 	res, err := h.workerService.UpdateInventory(ctx, &inventory)
 	if err != nil {
-		trace_id := fmt.Sprintf("%v",ctx.Value("request-id"))
-		return h.ErrorHandler(trace_id, err)
+		return h.ErrorHandler(h.getTraceID(ctx), err)
 	}
 	
-	return coreMiddleWareWriteJSON.WriteJSON(rw, http.StatusOK, res)
+	return h.writeJSON(rw, http.StatusOK, res)
 }
