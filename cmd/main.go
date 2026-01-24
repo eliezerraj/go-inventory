@@ -49,7 +49,7 @@ func init(){
 								os.O_APPEND|os.O_CREATE|os.O_WRONLY, 
 								0644)
 		if err != nil {
-			panic(fmt.Sprintf("Failed to open log file: %v", err))
+			panic(fmt.Sprintf("FAILED to open log file: %v", err))
 		}
 		writers = append(writers, file)
 	} 
@@ -86,7 +86,7 @@ func setupAppContext(ctx context.Context) (*AppContext, error) {
 	configLoader := config.NewConfigLoader(&initLogger)
 	allConfigs, err := configLoader.LoadAll()
 	if err != nil {
-		return nil, fmt.Errorf("configuration loading failed: %w", err)
+		return nil, fmt.Errorf("configuration loading FAILED: %w", err)
 	}
 
 	// Build AppServer
@@ -106,7 +106,7 @@ func setupAppContext(ctx context.Context) (*AppContext, error) {
 	// Connect to database with retry and timeout
 	databaseServer, err := connectDatabase(ctx, *appServer.DatabaseConfig, &logger)
 	if err != nil {
-		return nil, fmt.Errorf("database connection failed: %w", err)
+		return nil, fmt.Errorf("database connection FAILED: %w", err)
 	}
 
 	return &AppContext{
@@ -167,7 +167,7 @@ func connectDatabase(ctx context.Context, dbCfg go_core_db_pg.DatabaseConfig, lo
 				Ctx(connCtx).
 				Err(err).
 				Int("attempt", attempt).
-				Msg("Failed to connect to database, retrying...")
+				Msg("FAILED to connect to database, retrying...")
 			select {
 			case <-connCtx.Done():
 				return go_core_db_pg.DatabasePGServer{}, fmt.Errorf("connection timeout after %d attempts: %w", attempt, err)
@@ -177,7 +177,7 @@ func connectDatabase(ctx context.Context, dbCfg go_core_db_pg.DatabaseConfig, lo
 		}
 	}
 
-	return go_core_db_pg.DatabasePGServer{}, fmt.Errorf("failed to connect to database after %d attempts: %w", maxRetries, lastErr)
+	return go_core_db_pg.DatabasePGServer{}, fmt.Errorf("FAILED to connect to database after %d attempts: %w", maxRetries, lastErr)
 }
 
 // main is the application entry point
@@ -190,11 +190,12 @@ func main() {
 	if err != nil {
 		initLogger.Fatal().
 			Err(err).
-			Msg("Failed to initialize application context")
+			Msg("FAILED to initialize application context")
 	}
 
 	appCtx.Logger.Info().
-		Msgf("STARTING APP version: %s", appCtx.Server.Application.Version)
+		Msgf("STARTING workload version: %s", appCtx.Server.Application.Version)
+
 	appCtx.Logger.Info().
 		Interface("server", appCtx.Server).
 		Send()
@@ -221,7 +222,7 @@ func main() {
 		cancel()
 
 		appCtx.Logger.Info().
-			Msgf("App %s shutdown completed successfully", appCtx.Server.Application.Name)
+			Msgf("workload ** %s ** shutdown completed SUCCESSFULLY", appCtx.Server.Application.Name)
 	}()
 
 	// Wire dependencies
@@ -250,8 +251,8 @@ func main() {
 		appCtx.Logger.Error().
 			Ctx(ctx).
 			Err(err).
-			Msg("Health check failed for support services")
-		return
+			Msg("Health check FAILED for support services")
+		//return // ENABLE this line to exit application
 	}
 
 	appCtx.Logger.Info().

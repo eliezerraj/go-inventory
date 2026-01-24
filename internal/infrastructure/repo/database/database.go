@@ -1,21 +1,21 @@
 package database
 
 import (
-		"context"
-		"fmt"
-		"strings"
-		"database/sql"
-		"time"
+	"context"
+	"fmt"
+	"strings"
+	"database/sql"
+	"time"
 
-		"github.com/rs/zerolog"
-		"github.com/jackc/pgx/v5"
+	"github.com/rs/zerolog"
+	"github.com/jackc/pgx/v5"
 
-		"github.com/go-inventory/shared/erro"
-		"github.com/go-inventory/internal/domain/model"
-		"go.opentelemetry.io/otel/trace"
+	"github.com/go-inventory/shared/erro"
+	"github.com/go-inventory/internal/domain/model"
+	"go.opentelemetry.io/otel/trace"
 
-		go_core_otel_trace "github.com/eliezerraj/go-core/v2/otel/trace"
-		go_core_db_pg "github.com/eliezerraj/go-core/v2/database/postgre"
+	go_core_otel_trace "github.com/eliezerraj/go-core/v2/otel/trace"
+	go_core_db_pg "github.com/eliezerraj/go-core/v2/database/postgre"
 )
 
 type WorkerRepository struct {
@@ -63,7 +63,7 @@ func (w *WorkerRepository) scanProductFromRows(rows pgx.Rows) (*model.Product, e
 					&nullUpdatedAt,
 				)
 	if err != nil {
-		return nil, fmt.Errorf("failed to scan product from rows: %w", err)
+		return nil, fmt.Errorf("FAILED to scan product from rows: %w", err)
 	}
 	
 	product.UpdatedAt = w.pointerTime(nullUpdatedAt)
@@ -124,7 +124,6 @@ func (w* WorkerRepository) AddProduct(ctx context.Context,
 						product.CreatedAt)
 						
 	if err := row.Scan(&id); err != nil {
-			
 		if strings.Contains(err.Error(), "duplicate key value violates") {
     		w.logger.Warn().
 					 Ctx(ctx).
@@ -134,8 +133,7 @@ func (w* WorkerRepository) AddProduct(ctx context.Context,
 					 Ctx(ctx).
 				     Err(err).Send()
 		}
-
-		return nil, fmt.Errorf("failed to insert product: %w", err)
+		return nil, fmt.Errorf("FAILED to insert product: %w", err)
 	}
 
 	// Set PK
@@ -161,7 +159,7 @@ func (w *WorkerRepository) GetProduct(ctx context.Context,
 		w.logger.Error().
 			  	 Ctx(ctx).
 				 Err(err).Send()
-		return nil, fmt.Errorf("failed to acquire connection: %w", err)
+		return nil, fmt.Errorf("FAILED to acquire connection: %w", err)
 	}
 	defer w.DatabasePG.Release(conn)
 
@@ -183,7 +181,7 @@ func (w *WorkerRepository) GetProduct(ctx context.Context,
 		w.logger.Error().
 				Ctx(ctx).
 				Err(err).Send()
-		return nil, fmt.Errorf("failed to query product: %w", err)
+		return nil, fmt.Errorf("FAILED to query product: %w", err)
 	}
 	defer rows.Close()
 
@@ -222,7 +220,7 @@ func (w *WorkerRepository) GetProductId(ctx context.Context,
 		w.logger.Error().
 				Ctx(ctx).
 				Err(err).Send()
-		return nil, fmt.Errorf("failed to acquire connection: %w", err)
+		return nil, fmt.Errorf("FAILED to acquire connection: %w", err)
 	}
 	defer w.DatabasePG.Release(conn)
 
@@ -244,7 +242,7 @@ func (w *WorkerRepository) GetProductId(ctx context.Context,
 		w.logger.Error().
 				Ctx(ctx).
 				Err(err).Send()
-		return nil, fmt.Errorf("failed to query product by id: %w", err)
+		return nil, fmt.Errorf("FAILED to query product by id: %w", err)
 	}
 	defer rows.Close()
 
@@ -304,7 +302,7 @@ func (w* WorkerRepository) AddInventory(ctx context.Context,
 		w.logger.Error().
 				Ctx(ctx).
 				Err(err).Send()
-		return nil, fmt.Errorf("failed to insert inventory: %w", err)
+		return nil, fmt.Errorf("FAILED to insert inventory: %w", err)
 	}
 
 	// Set PK
@@ -330,7 +328,7 @@ func (w *WorkerRepository) GetInventory(ctx context.Context,
 		w.logger.Error().
 				Ctx(ctx).
 				Err(err).Send()
-		return nil, fmt.Errorf("failed to acquire connection: %w", err)
+		return nil, fmt.Errorf("FAILED to acquire connection: %w", err)
 	}
 	defer w.DatabasePG.Release(conn)
 
@@ -367,7 +365,7 @@ func (w *WorkerRepository) GetInventory(ctx context.Context,
 		w.logger.Error().
 				Ctx(ctx).
 				Err(err).Send()
-		return nil, fmt.Errorf("failed to query inventory: %w", err)
+		return nil, fmt.Errorf("FAILED to query inventory: %w", err)
 	}
 	defer rows.Close()
 
@@ -391,7 +389,7 @@ func (w *WorkerRepository) GetInventory(ctx context.Context,
 			w.logger.Error().
 					Ctx(ctx).
 					Err(err).Send()
-			return nil, fmt.Errorf("failed to scan inventory row: %w", err)
+			return nil, fmt.Errorf("FAILED to scan inventory row: %w", err)
 		}
 
 		res_product.UpdatedAt = w.pointerTime(nullProductUpdatedAt)
@@ -448,7 +446,7 @@ func (w* WorkerRepository) UpdateInventory(ctx context.Context,
 				Ctx(ctx).
 				Str("func","UpdateInventory").
 				Err(err).Send()
-		return 0, fmt.Errorf("failed to update inventory: %w", err)
+		return 0, fmt.Errorf("FAILED to update inventory: %w", err)
 	}
 
 	return row.RowsAffected(), nil

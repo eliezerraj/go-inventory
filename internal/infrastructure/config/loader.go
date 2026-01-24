@@ -57,22 +57,22 @@ func (cl *ConfigLoader) LoadAll() (*AllConfig, error) {
 
 	app, err := cl.loadApplication()
 	if err != nil {
-		return nil, fmt.Errorf("failed to load application config: %w", err)
+		return nil, fmt.Errorf("FAILED to load application config: %w", err)
 	}
 
 	server, err := cl.loadServer()
 	if err != nil {
-		return nil, fmt.Errorf("failed to load server config: %w", err)
+		return nil, fmt.Errorf("FAILED to load server config: %w", err)
 	}
 
 	database, err := cl.loadDatabase()
 	if err != nil {
-		return nil, fmt.Errorf("failed to load database config: %w", err)
+		return nil, fmt.Errorf("FAILED to load database config: %w", err)
 	}
 
 	otel, err := cl.loadOtel()
 	if err != nil {
-		return nil, fmt.Errorf("failed to load OTEL config: %w", err)
+		return nil, fmt.Errorf("FAILED to load OTEL config: %w", err)
 	}
 
 	return &AllConfig{
@@ -103,7 +103,7 @@ func (cl *ConfigLoader) loadApplication() (*model.Application, error) {
 	// Get IP address
 	ipAddr, err := getLocalIPAddress()
 	if err != nil {
-		cl.logger.Warn().Err(err).Msg("Failed to get local IP address")
+		cl.logger.Warn().Err(err).Msg("FAILED to get local IP address")
 		app.IPAddress = "unknown"
 	} else {
 		app.IPAddress = ipAddr
@@ -112,10 +112,8 @@ func (cl *ConfigLoader) loadApplication() (*model.Application, error) {
 	app.OsPid = fmt.Sprintf("%d", os.Getpid())
 
 	cl.logger.Info().
-		Str("app_name", app.Name).
-		Str("version", app.Version).
-		Str("env", app.Env).
-		Msg("Application configuration loaded")
+		Interface("application", app).
+		Msg("Application configuration loaded SUCCESSFULLY")
 
 	return app, nil
 }
@@ -158,9 +156,8 @@ func (cl *ConfigLoader) loadServer() (*model.Server, error) {
 	}
 
 	cl.logger.Info().
-		Int("port", port).
-		Int("ctx_timeout", ctxTimeout).
-		Msg("Server configuration loaded")
+		Interface("server", server).
+		Msg("Server configuration loaded SUCCESSFULLY")
 
 	return server, nil
 }
@@ -181,7 +178,7 @@ func (cl *ConfigLoader) loadDatabase() (*go_core_db_pg.DatabaseConfig, error) {
 	// Get credentials with fallbacks
 	user, pass, err := getDatabaseCredentials(cl.logger)
 	if err != nil {
-		return nil, fmt.Errorf("failed to load database credentials: %w", err)
+		return nil, fmt.Errorf("FAILED to load database credentials: %w", err)
 	}
 
 	dbCfg := &go_core_db_pg.DatabaseConfig{
@@ -194,11 +191,8 @@ func (cl *ConfigLoader) loadDatabase() (*go_core_db_pg.DatabaseConfig, error) {
 	}
 
 	cl.logger.Info().
-		Str("host", host).
-		Str("port", port).
-		Str("database", dbName).
-		Int("max_connections", maxConn).
-		Msg("Database configuration loaded")
+		Interface("dbCfg", dbCfg).
+		Msg("Database configuration loaded SUCCESSFULLY")
 
 	return dbCfg, nil
 }
@@ -225,9 +219,8 @@ func (cl *ConfigLoader) loadOtel() (*go_core_otel_trace.EnvTrace, error) {
 	}
 
 	cl.logger.Info().
-		Str("endpoint", otel.OtelExportEndpoint).
-		Bool("stdout_exporter", otel.UseStdoutTracerExporter).
-		Msg("OTEL configuration loaded")
+		Interface("otel", otel).
+		Msg("OTEL configuration loaded SUCCESSFULLY")
 
 	return otel, nil
 }
@@ -260,7 +253,7 @@ func getEnvInt(key string, defaultVal int) (int, error) {
 
 	intVal, err := strconv.Atoi(val)
 	if err != nil {
-		return 0, fmt.Errorf("failed to parse %s as integer: %w", key, err)
+		return 0, fmt.Errorf("FAILED to parse %s as integer: %w", key, err)
 	}
 
 	return intVal, nil
@@ -302,7 +295,6 @@ func getDatabaseCredentials(logger *zerolog.Logger) (user, pass string, err erro
 // getLocalIPAddress retrieves the local non-loopback IP address
 func getLocalIPAddress() (string, error) {
 
-	
 	addrs, err := net.InterfaceAddrs()
 	if err != nil {
 		return "", err
