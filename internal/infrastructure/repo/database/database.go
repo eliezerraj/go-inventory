@@ -421,9 +421,8 @@ func (w* WorkerRepository) UpdateInventory(ctx context.Context,
 	// Query Execute
 	query := `UPDATE inventory
 				SET available = available + $3,
-					pending = pending + $4,
-					reserved = reserved + $5,
-					sold = sold + $6,
+					reserved = reserved + $4,
+					sold = sold + $5,
 					updated_at = $2
 				WHERE id = (SELECT id 
 							FROM inventory
@@ -437,7 +436,6 @@ func (w* WorkerRepository) UpdateInventory(ctx context.Context,
 						inventory.Product.ID,
 						inventory.UpdatedAt,		
 						inventory.Available,
-						inventory.Pending,
 						inventory.Reserved,
 						inventory.Sold,
 					)
