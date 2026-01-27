@@ -9,7 +9,8 @@ import (
 	"github.com/go-inventory/internal/domain/model"
 	"github.com/go-inventory/shared/erro"
 	"go.opentelemetry.io/otel/trace"
-
+	"go.opentelemetry.io/otel/codes"
+	
 	database "github.com/go-inventory/internal/infrastructure/repo/database"
 
 	go_core_db_pg "github.com/eliezerraj/go-core/v2/database/postgre"
@@ -78,6 +79,9 @@ func (s * WorkerService) HealthCheck(ctx context.Context) error{
 	spanDB.End()
 	
 	if err != nil {
+		span.RecordError(err) 
+        span.SetStatus(codes.Error, err.Error())
+
 		s.logger.Error().
 				Ctx(ctx).
 				Err(err).Msg("*** Database HEALTH CHECK FAILED ***")
@@ -86,7 +90,6 @@ func (s * WorkerService) HealthCheck(ctx context.Context) error{
 
 	s.logger.Info().
 			Ctx(ctx).
-			Str("func","HealthCheck").
 			Msg("*** Database HEALTH CHECK SUCCESSFULL ***")
 
 	return nil
@@ -105,6 +108,8 @@ func (s *WorkerService) AddProduct(ctx context.Context,
 	// prepare database
 	tx, conn, err := s.workerRepository.DatabasePG.StartTx(ctx)
 	if err != nil {
+		span.RecordError(err) 
+        span.SetStatus(codes.Error, err.Error())
 		return nil, err
 	}
 
@@ -153,6 +158,7 @@ func (s * WorkerService) GetProduct(ctx context.Context, product *model.Product)
 	result, err := s.callRepositoryRead(ctx, "GetProduct", func(ctx context.Context) (interface{}, error) {
 		return s.workerRepository.GetProduct(ctx, product)
 	})
+
 	if err != nil {
 		return nil, err
 	}
@@ -164,6 +170,7 @@ func (s * WorkerService) GetProductId(ctx context.Context, product *model.Produc
 	result, err := s.callRepositoryRead(ctx, "GetProductId", func(ctx context.Context) (interface{}, error) {
 		return s.workerRepository.GetProductId(ctx, product)
 	})
+
 	if err != nil {
 		return nil, err
 	}
@@ -175,6 +182,7 @@ func (s * WorkerService) GetInventory(ctx context.Context, inventory *model.Inve
 	result, err := s.callRepositoryRead(ctx, "GetInventory", func(ctx context.Context) (interface{}, error) {
 		return s.workerRepository.GetInventory(ctx, inventory)
 	})
+	
 	if err != nil {
 		return nil, err
 	}
@@ -194,6 +202,8 @@ func (s * WorkerService) UpdateInventory(ctx context.Context, inventory *model.I
 	// prepare database
 	tx, conn, err := s.workerRepository.DatabasePG.StartTx(ctx)
 	if err != nil {
+		span.RecordError(err) 
+        span.SetStatus(codes.Error, err.Error())
 		return nil, err
 	}
 

@@ -106,7 +106,9 @@ func (h *HttpAppServer) StartHttpAppServer(	ctx context.Context,
 	go func() {
 		err := srv.ListenAndServe()
 		if err != nil && err != http.ErrServerClosed {
-			h.logger.Error().Err(err).Msg("Server error")
+			h.logger.Error().
+				Err(err).
+				Msg("Server error")
 			serverErrors <- err
 		}
 	}()

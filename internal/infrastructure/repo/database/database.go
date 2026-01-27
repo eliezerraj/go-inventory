@@ -13,6 +13,7 @@ import (
 	"github.com/go-inventory/shared/erro"
 	"github.com/go-inventory/internal/domain/model"
 	"go.opentelemetry.io/otel/trace"
+	"go.opentelemetry.io/otel/codes"
 
 	go_core_otel_trace "github.com/eliezerraj/go-core/v2/otel/trace"
 	go_core_db_pg "github.com/eliezerraj/go-core/v2/database/postgre"
@@ -124,6 +125,8 @@ func (w* WorkerRepository) AddProduct(ctx context.Context,
 						product.CreatedAt)
 						
 	if err := row.Scan(&id); err != nil {
+		span.RecordError(err) 
+        span.SetStatus(codes.Error, err.Error())
 		if strings.Contains(err.Error(), "duplicate key value violates") {
     		w.logger.Warn().
 					 Ctx(ctx).
@@ -156,6 +159,8 @@ func (w *WorkerRepository) GetProduct(ctx context.Context,
 	// db connection
 	conn, err := w.DatabasePG.Acquire(ctx)
 	if err != nil {
+		span.RecordError(err) 
+        span.SetStatus(codes.Error, err.Error())
 		w.logger.Error().
 			  	 Ctx(ctx).
 				 Err(err).Send()
@@ -178,6 +183,8 @@ func (w *WorkerRepository) GetProduct(ctx context.Context,
 							query, 
 							product.Sku)
 	if err != nil {
+		span.RecordError(err) 
+        span.SetStatus(codes.Error, err.Error())
 		w.logger.Error().
 				Ctx(ctx).
 				Err(err).Send()
@@ -188,10 +195,12 @@ func (w *WorkerRepository) GetProduct(ctx context.Context,
 	if rows.Next() {
 		res_product, err := w.scanProductFromRows(rows)
 		if err != nil {
+			span.RecordError(err) 
+        	span.SetStatus(codes.Error, err.Error())
 			w.logger.Error().
 					Ctx(ctx).
 					Err(err).Send()
-			return nil, err
+			return nil, fmt.Errorf("FAILED to scanProductFromRows product: %w", err)
 		}
 		return res_product, nil
 	}
@@ -217,6 +226,8 @@ func (w *WorkerRepository) GetProductId(ctx context.Context,
 	// db connection
 	conn, err := w.DatabasePG.Acquire(ctx)
 	if err != nil {
+		span.RecordError(err) 
+        span.SetStatus(codes.Error, err.Error())
 		w.logger.Error().
 				Ctx(ctx).
 				Err(err).Send()
@@ -239,6 +250,8 @@ func (w *WorkerRepository) GetProductId(ctx context.Context,
 							query, 
 							product.ID)
 	if err != nil {
+		span.RecordError(err) 
+        span.SetStatus(codes.Error, err.Error())
 		w.logger.Error().
 				Ctx(ctx).
 				Err(err).Send()
@@ -249,10 +262,12 @@ func (w *WorkerRepository) GetProductId(ctx context.Context,
 	if rows.Next() {
 		res_product, err := w.scanProductFromRows(rows)
 		if err != nil {
+			span.RecordError(err) 
+        	span.SetStatus(codes.Error, err.Error())
 			w.logger.Error().
 					Ctx(ctx).
 					Err(err).Send()
-			return nil, err
+			return nil, fmt.Errorf("FAILED to scanProductFromRows product: %w", err)
 		}
 		return res_product, nil
 	}
@@ -299,6 +314,8 @@ func (w* WorkerRepository) AddInventory(ctx context.Context,
 						inventory.CreatedAt)
 						
 	if err := row.Scan(&id); err != nil {
+		span.RecordError(err) 
+        span.SetStatus(codes.Error, err.Error())
 		w.logger.Error().
 				Ctx(ctx).
 				Err(err).Send()
@@ -325,6 +342,8 @@ func (w *WorkerRepository) GetInventory(ctx context.Context,
 	// db connection
 	conn, err := w.DatabasePG.Acquire(ctx)
 	if err != nil {
+		span.RecordError(err) 
+        span.SetStatus(codes.Error, err.Error())
 		w.logger.Error().
 				Ctx(ctx).
 				Err(err).Send()
@@ -362,6 +381,8 @@ func (w *WorkerRepository) GetInventory(ctx context.Context,
 							query, 
 							inventory.Product.Sku)
 	if err != nil {
+		span.RecordError(err) 
+        span.SetStatus(codes.Error, err.Error())		
 		w.logger.Error().
 				Ctx(ctx).
 				Err(err).Send()
@@ -386,6 +407,8 @@ func (w *WorkerRepository) GetInventory(ctx context.Context,
 						&nullInventoryUpdatedAt,
 					)
 		if err != nil {
+			span.RecordError(err) 
+        	span.SetStatus(codes.Error, err.Error())
 			w.logger.Error().
 					Ctx(ctx).
 					Err(err).Send()
@@ -440,9 +463,10 @@ func (w* WorkerRepository) UpdateInventory(ctx context.Context,
 						inventory.Sold,
 					)
 	if err != nil {
+		span.RecordError(err) 
+        span.SetStatus(codes.Error, err.Error())
 		w.logger.Error().
 				Ctx(ctx).
-				Str("func","UpdateInventory").
 				Err(err).Send()
 		return 0, fmt.Errorf("FAILED to update inventory: %w", err)
 	}
