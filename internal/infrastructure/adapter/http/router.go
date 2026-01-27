@@ -15,6 +15,7 @@ import (
 	"github.com/go-inventory/internal/domain/model"
 	"github.com/go-inventory/internal/domain/service"
 	"go.opentelemetry.io/otel/trace"
+	"go.opentelemetry.io/otel/codes"
 
 	go_core_midleware "github.com/eliezerraj/go-core/v2/middleware"
 	go_core_otel_trace "github.com/eliezerraj/go-core/v2/otel/trace"
@@ -158,6 +159,8 @@ func (h *HttpRouters) AddProduct(rw http.ResponseWriter, req *http.Request) erro
 	
 	err := json.NewDecoder(req.Body).Decode(&product)
 	if err != nil {
+		span.RecordError(err) 
+        span.SetStatus(codes.Error, err.Error())		
 		return h.ErrorHandler(h.getTraceID(ctx), erro.ErrBadRequest)
 	}
 
@@ -211,6 +214,8 @@ func (h *HttpRouters) GetProductId(rw http.ResponseWriter, req *http.Request) er
 	
 	varIDint, err := strconv.Atoi(varID)
 	if err != nil {
+		span.RecordError(err) 
+        span.SetStatus(codes.Error, err.Error())
 		return h.ErrorHandler(h.getTraceID(ctx), erro.ErrBadRequest)
 	}
 
@@ -257,6 +262,8 @@ func (h *HttpRouters) UpdateInventory(rw http.ResponseWriter, req *http.Request)
 	
 	err := json.NewDecoder(req.Body).Decode(&inventory)
 	if err != nil {
+		span.RecordError(err) 
+        span.SetStatus(codes.Error, err.Error())
 		return h.ErrorHandler(h.getTraceID(ctx), erro.ErrBadRequest)
 	}
 
