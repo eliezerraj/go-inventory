@@ -56,9 +56,10 @@ func NewHttpRouters(appServer *model.AppServer,
 					workerService *service.WorkerService,
 					appLogger *zerolog.Logger,
 					tracerProvider *go_core_otel_trace.TracerProvider) HttpRouters {
+	
 	logger := appLogger.With().
-						Str("package", "adapter.http").
-						Logger()
+				Str("package", "adapter.http").
+				Logger()
 			
 	logger.Info().
 			Str("func","NewHttpRouters").Send()
