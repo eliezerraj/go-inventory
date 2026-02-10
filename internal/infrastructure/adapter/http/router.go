@@ -188,7 +188,7 @@ func (h *HttpRouters) GetProduct(rw http.ResponseWriter, req *http.Request) erro
     //    go_core_midleware.DebugContextValues(ctx, h.logger)
     //}
 
-	  // For demonstration; remove in production
+	// For demonstration; remove in production
 	// decode payload				
 	vars := mux.Vars(req)
 	varID := vars["id"]
