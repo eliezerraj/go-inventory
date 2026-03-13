@@ -46,6 +46,7 @@ type Product struct {
 	Type		string 		`json:"type,omitempty"`
 	Name		string 		`json:"name,omitempty"`
 	Status		string 		`json:"status,omitempty"`
+	LeadTime	int			`json:"lead_time,omitempty"`
 	CreatedAt	time.Time 	`json:"created_at,omitempty"`
 	UpdatedAt	*time.Time 	`json:"update_at,omitempty"`	
 }

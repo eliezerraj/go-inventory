@@ -60,6 +60,7 @@ func (w *WorkerRepository) scanProductFromRows(rows pgx.Rows) (*model.Product, e
 					&product.Type,
 					&product.Name,
 					&product.Status,
+					&product.LeadTime,
 					&product.CreatedAt,
 					&nullUpdatedAt,
 				)
@@ -113,8 +114,9 @@ func (w* WorkerRepository) AddProduct(ctx context.Context,
 									type,
 									name,
 									status,
+									lead_time,
 									created_at) 
-				VALUES($1, $2, $3, $4, $5) RETURNING id`
+				VALUES($1, $2, $3, $4, $5, $6) RETURNING id`
 
 	row := tx.QueryRow(	ctx, 
 						query,
@@ -122,6 +124,7 @@ func (w* WorkerRepository) AddProduct(ctx context.Context,
 						product.Type, 
 						product.Name,
 						product.Status,
+						product.LeadTime,
 						product.CreatedAt)
 						
 	if err := row.Scan(&id); err != nil {
@@ -174,6 +177,7 @@ func (w *WorkerRepository) GetProduct(ctx context.Context,
 					type,
 					name,
 					status,
+					lead_time,
 					created_at, 
 					updated_at
 				FROM product 
@@ -241,6 +245,7 @@ func (w *WorkerRepository) GetProductId(ctx context.Context,
 					type,
 					name,
 					status,
+					lead_time,
 					created_at, 
 					updated_at
 				FROM product 
@@ -363,6 +368,7 @@ func (w *WorkerRepository) GetInventory(ctx context.Context,
 					 p.type,
 					 p.name,
 					 p.status,
+					 p.lead_time,
 					 p.created_at, 
 					 p.updated_at,
 					 i.id,
@@ -396,6 +402,7 @@ func (w *WorkerRepository) GetInventory(ctx context.Context,
 						&res_product.Type,
 						&res_product.Name,
 						&res_product.Status,
+						&res_product.LeadTime,
 						&res_product.CreatedAt,
 						&nullProductUpdatedAt,
 						&res_inventory.ID, 
