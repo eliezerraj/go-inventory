@@ -452,6 +452,7 @@ func (w* WorkerRepository) UpdateInventory(ctx context.Context,
 	query := `UPDATE inventory
 				SET available = available + $3,
 					reserved = reserved + $4,
+					pending = pending + $6,
 					sold = sold + $5,
 					updated_at = $2
 				WHERE id = (SELECT id 
@@ -468,6 +469,7 @@ func (w* WorkerRepository) UpdateInventory(ctx context.Context,
 						inventory.Available,
 						inventory.Reserved,
 						inventory.Sold,
+						inventory.Pending,
 					)
 	if err != nil {
 		span.RecordError(err) 

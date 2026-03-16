@@ -54,7 +54,6 @@ func (s *WorkerService) callRepositoryRead(ctx context.Context, spanName string,
 	return fn(ctx)
 }
 
-
 // About database stats
 func (s *WorkerService) Stat(ctx context.Context) (go_core_db_pg.PoolStats){
 	s.logger.Info().
@@ -142,7 +141,7 @@ func (s *WorkerService) AddProduct(ctx context.Context,
 		Available:	1000,
 		Reserved:	0,
 		Sold:		0, 	
-		CreatedAt:	now,
+		CreatedAt:	product.CreatedAt ,
 	}
 	//Create inventory
 	res_inventory, err := s.workerRepository.AddInventory(ctx, tx, &inventory)
@@ -245,8 +244,21 @@ func (s * WorkerService) UpdateInventory(ctx context.Context, inventory *model.I
 
 	resInventory.Available = inventory.Available + resInventory.Available
 	resInventory.Reserved = inventory.Reserved + resInventory.Reserved
+	resInventory.Pending = inventory.Pending + resInventory.Pending
 	resInventory.Sold = inventory.Sold + resInventory.Sold
 	resInventory.UpdatedAt = inventory.UpdatedAt	
-	
+
+	// create a time series for inventory only for sold products (order checkout)
+	inventory.Available = resInventory.Available
+	inventory.CreatedAt = time.Now()
+	// pending can be negative when an order is completed, but in the time series we want to keep it as zero to avoid confusion in the reports
+	if inventory.Pending < 0 {
+		inventory.Pending = 0
+	}
+	_, err = s.workerRepository.AddInventoryTimeSeries(ctx, tx, inventory)
+	if err != nil {
+		return nil, err
+	}
+
 	return resInventory, nil
 }
