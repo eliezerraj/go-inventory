@@ -19,6 +19,8 @@
 ![alt text](inventory.png)
 
 ![](image.png)
+
+![alt text](image-1.png)
     
  ## Sequence Diagram (source)
     
@@ -56,6 +58,12 @@
     inventory->inventory:create \ninventory_time_series\n
     user<--inventory:http 200 (JSON)\nputData
     end
+    
+    alt GetProductId
+    user->inventory:GET /timeseries/product?sku={sku}&window={size}
+    user<--inventory:http 200 (JSON)\nqueryData
+    end
+
 
 ## Enviroment variables
 

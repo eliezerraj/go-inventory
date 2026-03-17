@@ -110,7 +110,7 @@ func (w *WorkerRepository) GetInventoryTimeSeries(	ctx context.Context,
 	defer w.DatabasePG.Release(conn)
 
 	// Query and Execute
-	query := `select 	pr.sku,
+	query := `select * from ( select 	pr.sku,
 						its.fk_product_id, 
 						its.snapshot_date, 
 						its.available,
@@ -121,8 +121,8 @@ func (w *WorkerRepository) GetInventoryTimeSeries(	ctx context.Context,
 						product pr
 				where pr.sku = $1
 				and its.fk_product_id = pr.id
-				order by its.fk_product_id desc, its.snapshot_date desc
-				limit $2`
+				order by its.snapshot_date desc
+				limit $2  ) order by snapshot_date asc;`
 
 	rows, err := conn.Query(ctx, 
 							query, 

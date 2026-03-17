@@ -243,7 +243,7 @@ func (h *HttpAppServer) setupRoutes(appHttpRouters app_http_routers.HttpRouters)
 	put.HandleFunc(routeInventory+"/{id}", h.withMetrics(appMiddleWare.MiddleWareErrorHandler(appHttpRouters.UpdateInventory)))
 
 	ts := appRouter.Methods(http.MethodGet, http.MethodOptions).Subrouter()
-	ts.HandleFunc(routeInventoryTimeSeries+"/{id}", h.withMetrics(appMiddleWare.MiddleWareErrorHandler(appHttpRouters.GetInventoryTimeSeries)))
+	ts.HandleFunc(routeInventoryTimeSeries, h.withMetrics(appMiddleWare.MiddleWareErrorHandler(appHttpRouters.GetInventoryTimeSeries)))
 
 	return appRouter
 }
