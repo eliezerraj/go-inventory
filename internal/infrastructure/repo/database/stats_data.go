@@ -25,6 +25,7 @@ func (w *WorkerRepository) scanInventoryFromRows(rows pgx.Rows) (*model.Inventor
 					&inventory.Sold,
 					&inventory.Pending,
 					&inventory.Incoming,
+					&product.LeadTime,
 				)
 	if err != nil {
 		return nil, fmt.Errorf("FAILED to scan inventory from rows: %w", err)
@@ -111,17 +112,18 @@ func (w *WorkerRepository) GetInventoryTimeSeries(	ctx context.Context,
 
 	// Query and Execute
 	query := `select * from ( select 	pr.sku,
-						its.fk_product_id, 
-						its.snapshot_date, 
-						its.available,
-						its.sold,
-						its.pending,
-						its.incoming
-				from inventory_time_series its,
-						product pr
-				where pr.sku = $1
-				and its.fk_product_id = pr.id
-				order by its.snapshot_date desc
+								its.fk_product_id, 
+								its.snapshot_date, 
+								its.available,
+								its.sold,
+								its.pending,
+								its.incoming,
+								pr.lead_time
+							from inventory_time_series its,
+									product pr
+							where pr.sku = $1
+							and its.fk_product_id = pr.id
+							order by its.snapshot_date desc
 				limit $2  ) order by snapshot_date asc;`
 
 	rows, err := conn.Query(ctx, 
