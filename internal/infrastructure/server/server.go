@@ -38,6 +38,7 @@ const (
 	routeProductID   = "/productId"
 	routeInventory   = "/inventory/product"
 	routeInventoryTimeSeries  = "/timeseries/product"
+	routeListInventory  = "/list/inventory/product"	
 )
 
 // ExcludedFromTracing routes that should not create spans
@@ -245,6 +246,9 @@ func (h *HttpAppServer) setupRoutes(appHttpRouters app_http_routers.HttpRouters)
 	ts := appRouter.Methods(http.MethodGet, http.MethodOptions).Subrouter()
 	ts.HandleFunc(routeInventoryTimeSeries, h.withMetrics(appMiddleWare.MiddleWareErrorHandler(appHttpRouters.GetInventoryTimeSeries)))
 
+	tsList := appRouter.Methods(http.MethodGet, http.MethodOptions).Subrouter()
+	tsList.HandleFunc(routeListInventory, h.withMetrics(appMiddleWare.MiddleWareErrorHandler(appHttpRouters.ListInventory)))	
+	
 	return appRouter
 }
 
