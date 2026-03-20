@@ -258,7 +258,7 @@ func (w *WorkerRepository) ListInventory(ctx context.Context,
 					 inventory as i
 				WHERE p.id = i.fk_product_id
 				and p.sku like '%' || $1 || '%'
-				order by i.id desc
+				order by p.sku asc
 				limit $2 offset $3;`
 
 	rows, err := conn.Query(ctx, 
