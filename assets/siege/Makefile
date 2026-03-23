@@ -17,6 +17,7 @@ load:
 	@for ((i=0; i<=1000; i++)); do \
 		echo "--- 01 INVENTORY  ---"; \
 		"/mnt/c/Eliezer/workspace/github.com/go-inventory/assets/siege/01_inventory.sh"; \
+		sleep 1s; \
 	done
 
 	echo "****** FIM DO PROCESSO ******"; \

@@ -46,6 +46,7 @@ type Product struct {
 	Type		string 		`json:"type,omitempty"`
 	Name		string 		`json:"name,omitempty"`
 	Status		string 		`json:"status,omitempty"`
+	LeadTime	int			`json:"lead_time,omitempty"`
 	CreatedAt	time.Time 	`json:"created_at,omitempty"`
 	UpdatedAt	*time.Time 	`json:"update_at,omitempty"`	
 }
@@ -56,7 +57,8 @@ type Inventory struct {
 	Available		int		`json:"available,omitempty"`
 	Pending			int		`json:"pending,omitempty"`
 	Reserved		int		`json:"reserved,omitempty"`
-	Sold			int		`json:"sold,omitempty"` 	
+	Sold			int		`json:"sold,omitempty"`
+	Incoming		int		`json:"incoming,omitempty"`
 	CreatedAt		time.Time 	`json:"created_at,omitempty"`
 	UpdatedAt		*time.Time 	`json:"update_at,omitempty"`	
 }
