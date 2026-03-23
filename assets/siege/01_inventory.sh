@@ -6,13 +6,12 @@ export AUTH_TOKEN=
 export URL_HOST=https://go-api-global.architecture.caradhras.io/inventory
 export URL_HOST=http://localhost:7000
 
-PRODUCT="beer"
+PRODUCT="wine-fr"
 TYPE="beverage"
 
 RANDOM_INV=$((RANDOM % 30 + 1))
 
 SKU="${PRODUCT}-${RANDOM_INV}"
-TYPE="food"
 NAME="${PRODUCT} ${RANDOM_INV}"
 
 echo "------------------------------"
