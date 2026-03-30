@@ -7,9 +7,9 @@ import (
 )
 
 // About get a inventory time series for a given inventory and window size (number of days)
-func (s * WorkerService) GetInventoryTimeSeries(ctx context.Context, windowsize int, inventory *model.Inventory) (*[]model.Inventory, error){
+func (s * WorkerService) GetInventoryTimeSeries(ctx context.Context, windowsize int, offset int, inventory *model.Inventory) (*[]model.Inventory, error){
 	result, err := s.callRepositoryRead(ctx, "GetInventoryTimeSeries", func(ctx context.Context) (interface{}, error) {
-		return s.workerRepository.GetInventoryTimeSeries(ctx, windowsize, inventory)
+		return s.workerRepository.GetInventoryTimeSeries(ctx, windowsize, offset, inventory)
 	})
 
 	if err != nil {

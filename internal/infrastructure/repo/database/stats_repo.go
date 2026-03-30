@@ -19,6 +19,7 @@ func (w *WorkerRepository) scanInventoryFromRows(rows pgx.Rows) (*model.Inventor
 
 	err := rows.Scan(
 					&product.Sku,
+					&inventory.ID,
 					&product.ID,
 					&inventory.CreatedAt,
 					&inventory.Available,
@@ -89,6 +90,7 @@ func (w* WorkerRepository) AddInventoryTimeSeries(ctx context.Context,
 // About get a product
 func (w *WorkerRepository) GetInventoryTimeSeries(	ctx context.Context, 
 													windowsize int,
+													offset int,
 									  				inventory *model.Inventory)  (*[]model.Inventory, error){
 	w.logger.Info().
 			Ctx(ctx).
@@ -112,6 +114,7 @@ func (w *WorkerRepository) GetInventoryTimeSeries(	ctx context.Context,
 
 	// Query and Execute
 	query := `select * from ( select 	pr.sku,
+										its.id,
 										its.fk_product_id, 
 										its.snapshot_date, 
 										its.available,
@@ -123,13 +126,15 @@ func (w *WorkerRepository) GetInventoryTimeSeries(	ctx context.Context,
 										product pr
 								where pr.sku = $1
 								and its.fk_product_id = pr.id
+								and its.sold > 0
 								order by its.snapshot_date desc
-				limit $2  ) order by snapshot_date asc;`
+				limit $2 offset $3 ) order by snapshot_date asc;`
 
 	rows, err := conn.Query(ctx, 
 							query, 
 							inventory.Product.Sku, 
-							windowsize,)
+							windowsize,
+							offset)
 	if err != nil {
 		span.RecordError(err) 
         span.SetStatus(codes.Error, err.Error())

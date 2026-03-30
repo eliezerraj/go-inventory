@@ -74,8 +74,8 @@ func (h *HttpRouters) ListInventory(rw http.ResponseWriter, req *http.Request) e
 		return h.ErrorHandler(h.getTraceID(ctx), erro.ErrBadRequest)
 	}
 
-	// default window is 24, can be override by query parameter
-	window := 10
+	// default window is 14, can be override by query parameter
+	window := 14
 
 	windowParam := query.Get("window")
 	if windowParam != "" {

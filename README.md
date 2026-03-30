@@ -18,9 +18,9 @@
 
 ![alt text](inventory.png)
 
-![](image.png)
+![alt text](image.png)
 
-![alt text](image-1.png)
+![alt text](image-2.png)
     
  ## Sequence Diagram (source)
     
@@ -59,7 +59,12 @@
     user<--inventory:http 200 (JSON)\nputData
     end
     
-    alt GetProductId
+    alt ListIinventory
+    user->inventory:list/inventory/product?sku={sku%}&window={size}&offset={start}
+    user<--inventory:http 200 (JSON)\nqueryData
+    end
+    
+    alt TimeSeries
     user->inventory:GET /timeseries/product?sku={sku}&window={size}
     user<--inventory:http 200 (JSON)\nqueryData
     end
@@ -153,6 +158,7 @@ Security Headers: Is implement via go-core midleware
         type 		VARCHAR(100) NOT NULL,
         name 		VARCHAR(100) NOT NULL,
         status		VARCHAR(100) NOT NULL,
+        lead_time 		INT 	    NOT NULL DEFAULT 30,
         created_at	timestamptz NOT NULL,
         updated_at	timestamptz NULL,
         CONSTRAINT 	product_pkey PRIMARY KEY (id)

@@ -2,12 +2,11 @@
 
 # variabels
 
-export AUTH_TOKEN=
-
+export AUTH_TOKEN=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl91c2UiOiJhY2Nlc3MiLCJpc3MiOiJsYW1iZGEtZ28taWRlbnRpZHkiLCJ2ZXJzaW9uIjoiMS4yIiwidXNlcm5hbWUiOiJhZG1pbi0xMDEiLCJqd3RfaWQiOiI1NjgzMDA1Yy1hOTBlLTQzMGYtOTE5MS1lYzdhYmQ3ZGQxOGUiLCJraWQiOiJhdXRoLWtleTpzZXJ2ZXItcHVibGljLmtleSIsInRpZXIiOiJ0aWVyMSIsImFwaV9hY2Nlc3Nfa2V5IjoiQVBJX0FDQ0VTU19LRVlfQURNSU5fMDAxIiwic2NvcGUiOlsidG9vbDppbmZvIiwidG9vbDpoZWFsdGgiLCJ0b29sOmdldF9wcm9kdWN0IiwiYWRtaW4iXSwiZXhwIjoxNzc0NzExMjc4fQ.XBpNTn5PC9eQcmDt9traLwp2ZlDO_QbZN8ZVpnLcp-U
 export URL_HOST=https://go-api-global.architecture.caradhras.io/inventory
-export URL_HOST=http://localhost:7000
+#export URL_HOST=http://localhost:7000
 
-PRODUCT="wine-fr"
+PRODUCT="cheese-fr"
 TYPE="beverage"
 
 RANDOM_INV=$((RANDOM % 30 + 1))

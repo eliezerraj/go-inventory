@@ -37,8 +37,8 @@ const (
 	routeProduct     = "/product"
 	routeProductID   = "/productId"
 	routeInventory   = "/inventory/product"
-	routeInventoryTimeSeries  = "/timeseries/product"
-	routeListInventory  = "/list/inventory/product"	
+	routeInventoryTimeSeries  = "/inventory/timeseries/product"
+	routeListInventory  = "/inventory/list/product"	
 )
 
 // ExcludedFromTracing routes that should not create spans
