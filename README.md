@@ -173,6 +173,7 @@ Security Headers: Is implement via go-core midleware
         pending 	 	INT 		NOT NULL DEFAULT 0,
         reserved	 	INT 		NOT NULL DEFAULT 0,
         sold		 	INT 		NOT null DEFAULT 0,
+        lead_time 		INT 	    NOT NULL DEFAULT 30,
         created_at 		timestamptz 	NOT NULL,
         updated_at 		timestamptz 	NULL,
         CONSTRAINT inventory_pkey PRIMARY KEY (id)
