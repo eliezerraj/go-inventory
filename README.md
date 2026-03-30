@@ -18,7 +18,11 @@
 
 ![alt text](inventory.png)
 
-![alt text](inventory_2.png)    
+![alt text](image.png)
+
+![alt text](image-2.png)
+    
+ ## Sequence Diagram (source)
     
     title inventory
 
@@ -51,8 +55,20 @@
     user->inventory:PUT /inventory/product/{id}
     inventory->inventory:get\nInventory
     inventory->inventory:update\nInventory
+    inventory->inventory:create \ninventory_time_series\n
     user<--inventory:http 200 (JSON)\nputData
     end
+    
+    alt ListIinventory
+    user->inventory:list/inventory/product?sku={sku%}&window={size}&offset={start}
+    user<--inventory:http 200 (JSON)\nqueryData
+    end
+    
+    alt TimeSeries
+    user->inventory:GET /timeseries/product?sku={sku}&window={size}
+    user<--inventory:http 200 (JSON)\nqueryData
+    end
+
 
 ## Enviroment variables
 
@@ -84,41 +100,41 @@ To run in local machine for local tests creat a .env in /cmd folder
 
 ## Endpoints
 
-curl --location 'http://localhost:7000/health'
+    curl --location 'http://localhost:7000/health'
 
-curl --location 'http://localhost:7000/live'
+    curl --location 'http://localhost:7000/live'
 
-curl --location 'http://localhost:7000/header'
+    curl --location 'http://localhost:7000/header'
 
-curl --location 'http://localhost:7000/context'
+    curl --location 'http://localhost:7000/context'
 
-curl --location 'http://localhost:7000/info'
+    curl --location 'http://localhost:7000/info'
 
-curl --location 'http://localhost:7000/metrics'
+    curl --location 'http://localhost:7000/metrics'
 
-curl --location 'http://localhost:7000/product/soda-01'
+    curl --location 'http://localhost:7000/product/soda-01'
 
-curl --location 'http://localhost:7000/productId/4'
+    curl --location 'http://localhost:7000/productId/4'
 
-curl --location 'http://localhost:7000/inventory/product/soda-01'
+    curl --location 'http://localhost:7000/inventory/product/soda-01'
 
-curl --location 'http://localhost:7000/product' \
-    --header 'Content-Type: application/json' \
-    --data '{
-        "sku": "mobile-101",
-        "type": "eletrocnic",
-        "name": "mobile 100",
-        "status": "IN-STOCK"
-    }'
+    curl --location 'http://localhost:7000/product' \
+        --header 'Content-Type: application/json' \
+        --data '{
+            "sku": "mobile-101",
+            "type": "eletrocnic",
+            "name": "mobile 100",
+            "status": "IN-STOCK"
+        }'
 
-curl --location --request PUT 'http://localhost:7000/inventory/product/floss-01' \
-    --header 'Content-Type: application/json' \
-    --data '{
-        "available": 0,
-        "pending": 0,
-        "reserved": 1,
-        "sold": 1
-    }'
+    curl --location --request PUT 'http://localhost:7000/inventory/product/floss-01' \
+        --header 'Content-Type: application/json' \
+        --data '{
+            "available": 0,
+            "pending": 0,
+            "reserved": 1,
+            "sold": 1
+        }'
 
 ## Monitoring
 
@@ -142,6 +158,7 @@ Security Headers: Is implement via go-core midleware
         type 		VARCHAR(100) NOT NULL,
         name 		VARCHAR(100) NOT NULL,
         status		VARCHAR(100) NOT NULL,
+        lead_time 		INT 	    NOT NULL DEFAULT 30,
         created_at	timestamptz NOT NULL,
         updated_at	timestamptz NULL,
         CONSTRAINT 	product_pkey PRIMARY KEY (id)
@@ -157,9 +174,22 @@ Security Headers: Is implement via go-core midleware
         reserved	 	INT 		NOT NULL DEFAULT 0,
         sold		 	INT 		NOT null DEFAULT 0,
         created_at 		timestamptz 	NOT NULL,
-        updated_at 		timestamptz 	NULL,   
+        updated_at 		timestamptz 	NULL,
         CONSTRAINT inventory_pkey PRIMARY KEY (id)
     );
 
-    ALTER TABLE public.inventory ADD CONSTRAINT inventory_fk_product_id_fkey 
+    CREATE TABLE public.inventory_time_series (
+        id 				BIGSERIAL	NOT NULL,
+        snapshot_date   timestamptz NOT NULL,
+        fk_product_id	BIGSERIAL	NOT NULL,
+        available		INT 		NOT null DEFAULT 0,
+        pending         INT 		NOT null DEFAULT 0,
+        sold		 	INT 		NOT null DEFAULT 0,
+        incoming		INT 		NOT null DEFAULT 0,
+        created_at 		timestamptz 	NOT NULL,
+        updated_at 		timestamptz 	NULL,
+        CONSTRAINT id PRIMARY KEY (id)
+    );
+
+    ALTER TABLE public.inventory_time_series ADD CONSTRAINT inventory_fk_product_id_fkey 
     FOREIGN KEY (fk_product_id) REFERENCES public.product(id);

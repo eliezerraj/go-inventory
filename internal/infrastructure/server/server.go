@@ -36,6 +36,9 @@ const (
 	routeInfo        = "/info"
 	routeProduct     = "/product"
 	routeProductID   = "/productId"
+	routeInventory   = "/inventory/product"
+	routeInventoryTimeSeries  = "/inventory/timeseries/product"
+	routeListInventory  = "/inventory/list/product"	
 )
 
 // ExcludedFromTracing routes that should not create spans
@@ -235,11 +238,17 @@ func (h *HttpAppServer) setupRoutes(appHttpRouters app_http_routers.HttpRouters)
 	getId.HandleFunc(routeProductID+"/{id}", h.withMetrics(appMiddleWare.MiddleWareErrorHandler(appHttpRouters.GetProductId)))
 
 	getInv := appRouter.Methods(http.MethodGet, http.MethodOptions).Subrouter()
-	getInv.HandleFunc("/inventory/product/{id}", h.withMetrics(appMiddleWare.MiddleWareErrorHandler(appHttpRouters.GetInventory)))
+	getInv.HandleFunc(routeInventory+"/{id}", h.withMetrics(appMiddleWare.MiddleWareErrorHandler(appHttpRouters.GetInventory)))
 
 	put := appRouter.Methods(http.MethodPut, http.MethodOptions).Subrouter()
-	put.HandleFunc("/inventory/product/{id}", h.withMetrics(appMiddleWare.MiddleWareErrorHandler(appHttpRouters.UpdateInventory)))
+	put.HandleFunc(routeInventory+"/{id}", h.withMetrics(appMiddleWare.MiddleWareErrorHandler(appHttpRouters.UpdateInventory)))
 
+	ts := appRouter.Methods(http.MethodGet, http.MethodOptions).Subrouter()
+	ts.HandleFunc(routeInventoryTimeSeries, h.withMetrics(appMiddleWare.MiddleWareErrorHandler(appHttpRouters.GetInventoryTimeSeries)))
+
+	tsList := appRouter.Methods(http.MethodGet, http.MethodOptions).Subrouter()
+	tsList.HandleFunc(routeListInventory, h.withMetrics(appMiddleWare.MiddleWareErrorHandler(appHttpRouters.ListInventory)))	
+	
 	return appRouter
 }
 
