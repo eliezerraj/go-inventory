@@ -31,6 +31,8 @@ func GetApplicationInfo() (model.Application) {
 
 	var application model.Application
 
+	logger.Info().
+		Str("func","GetApplicationInfo").Msg("Loading application configuration")
 	if os.Getenv("VERSION") !=  "" {
 		application.Version = os.Getenv("VERSION")
 	}
@@ -44,6 +46,8 @@ func GetApplicationInfo() (model.Application) {
 		application.Env = os.Getenv("ENV")
 	}
 
+	logger.Info().
+		Str("func","GetApplicationInfo").Msg("Loading OTEL configuration")
 	if os.Getenv("OTEL_STDOUT_LOG_GROUP") ==  "true" {
 		application.StdOutLogGroup = true
 	} else {
@@ -73,11 +77,12 @@ func GetApplicationInfo() (model.Application) {
 		application.OtelMetrics = false
 	}
 		
-	// Get IP
+	logger.Info().
+		Str("func","GetApplicationInfo").Msg("Loading network configuration")
 	addrs, err := net.InterfaceAddrs()
 	if err != nil {
 		logger.Error().
-				Err(err).Send()
+			Err(err).Msg("Failed to get network interface addresses")
 		os.Exit(3)
 	}
 

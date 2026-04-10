@@ -46,8 +46,8 @@ func init(){
 
 	if application.StdOutLogGroup {
 		file, err := os.OpenFile(application.LogGroup, 
-								os.O_APPEND|os.O_CREATE|os.O_WRONLY, 
-								0644)
+						os.O_APPEND|os.O_CREATE|os.O_WRONLY, 
+						0644)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "WARNING: failed to open log file '%s': %v\n", application.LogGroup, err)
 		} else {
