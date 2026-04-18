@@ -6,7 +6,7 @@ metadata:
   labels:
     app: *app-name
 data:
-  VERSION: "1.5"
+  VERSION: "1.6"
   ACCOUNT: "az:e5240c8f-ec4f-4bd4-a36e-1981d27dd8e1"
   APP_NAME: "go-inventory.az1d-aks-architecture"
   PORT: "7000"
@@ -21,9 +21,10 @@ data:
   LOG_LEVEL: "debug" #info, error, warning
   OTEL_EXPORTER_OTLP_ENDPOINT: "az1d-aks-architecture-otel-collector.default.svc.cluster.local:4317"
 
-  OTEL_METRICS: "true"
-  OTEL_STDOUT_TRACER: "false"
+  OTEL_METRICS: "false"
+  
   OTEL_TRACES: "true"
+  OTEL_STDOUT_TRACER: "false"
 
   # the features below works only for a local machine, for kubernetes all logs are shipping via a collector
   OTEL_LOGS: "false"
