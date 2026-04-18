@@ -159,6 +159,10 @@ func (h *HttpAppServer) StartHttpAppServer(	ctx context.Context,
 
 // Helper function to setup metrics
 func (h *HttpAppServer) setupMetrics(ctx context.Context) error {
+	h.logger.Info().
+		Ctx(ctx).
+		Str("func","setupMetrics").Send()
+
 	appInfoMetric := go_core_otel_metric.InfoMetric{
 		Name:    h.appServer.Application.Name,
 		Version: h.appServer.Application.Version,
@@ -195,6 +199,9 @@ func (h *HttpAppServer) setupMetrics(ctx context.Context) error {
 
 // Helper function to setup routes and middleware
 func (h *HttpAppServer) setupRoutes(appHttpRouters app_http_routers.HttpRouters) *mux.Router {
+	h.logger.Info().
+		Str("func","setupRoutes").Send()
+		
 	appRouter := mux.NewRouter().StrictSlash(true)
 	appMiddleWare := go_core_midleware.NewMiddleWare(h.logger)
 	
